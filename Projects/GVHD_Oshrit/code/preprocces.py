@@ -7,9 +7,10 @@ from LearningMethods import create_otu_and_mapping_files
 
 
 def preprocces(otu_table: pd.DataFrame, mapping: pd.DataFrame, tag_name: str, task_name: str, folder: str,
-               tax: int = 6, taxnomy_group: str = 'sub PCA', epsilon: float = 0.1, normalization: str = "log",
+               tax: int = 6, taxnomy_group: str = 'sub PCA', epsilon: float = 1, normalization: str = "log",
                z_scoring: str = "row", norm_after_rel: str = "No", std_to_delete: int = 0,
-               pca: Tuple[int, str] = (0, 'PCA')) -> Tuple[pd.DataFrame, pd.DataFrame, any]:
+               pca: Tuple[int, str] = (0, 'PCA'), minimum_bacteria_appearance=0) -> Tuple[
+    pd.DataFrame, pd.DataFrame, any]:
     """
     This function is a convenient fassad for the preprocess in microbiome git.
 
@@ -42,7 +43,8 @@ def preprocces(otu_table: pd.DataFrame, mapping: pd.DataFrame, tag_name: str, ta
 
     preprocess_params = {'taxonomy_level': tax, 'taxnomy_group': taxnomy_group, 'epsilon': epsilon,
                          'normalization': normalization, 'z_scoring': z_scoring, 'norm_after_rel': norm_after_rel,
-                         'std_to_delete': std_to_delete, 'pca': pca}
+                         'std_to_delete': std_to_delete, 'pca': pca,
+                         "minimum_bacteria_appearance": minimum_bacteria_appearance}
 
     data_creator.preprocess(preprocess_params, False, taxonomy_col="ID")
     otu_path, tag_path, pca_path = data_creator.csv_to_learn(task_name, folder, tax)
@@ -95,8 +97,13 @@ def create_event_date_column(df: pd.DataFrame, event_column: str):
     stool_otu = create_event_date_column(stool_otu, "ttcgvhd")
     saliva_otu = create_event_date_column(saliva_otu, "ttcgvhd")
     """
-    df["date_of" + event_column] = pd.to_datetime(df["bmtdate"]) + df[event_column].apply(
-        lambda x: relativedelta.relativedelta(days=x * 365.25))
+    if df[event_column].max() > 50:
+        # The data is already in day form
+        df["date_of" + event_column] = pd.to_datetime(df["bmtdate"]) + df[event_column].apply(
+            lambda x: relativedelta.relativedelta())
+    else:
+        df["date_of" + event_column] = pd.to_datetime(df["bmtdate"]) + df[event_column].apply(
+            lambda x: relativedelta.relativedelta(days=x * 365.25))
     return df
 
 
@@ -113,7 +120,6 @@ def classify_censoring(otu: pd.DataFrame, decision_column: str,
     uncensored = otu.loc[~otu[decision_column].map(dict_of_censored)]
 
     return censored, uncensored
-
 
 
 def data_augment_preprocess(otu: pd.DataFrame, tag: str, decision_column: str,
@@ -137,20 +143,23 @@ def data_augment_preprocess(otu: pd.DataFrame, tag: str, decision_column: str,
     return classify_censoring(otu, decision_column, dict_of_censored=dict_of_censored)
 
 
-def delete_features_according_to_key(df: pd.DataFrame, keep=None, bacteria_col_keyword="k__Bacteria"):
+def delete_features_according_to_key(df: pd.DataFrame, keep=None, bacteria_col_keywords=None):
     """
     delete all features which do not have the key word in their name
     :param df: dataframe
     :param bacteria_col_keyword: ""k__Bacteria"
     :param keep: a list of column names to keep
     :return: df with only the wanted columns
+    @param bacteria_col_keywords:
     """
+    if bacteria_col_keywords is None:
+        bacteria_col_keywords = ["k__Bacteria", "k__Archaea"]
     if keep:
         return df[
-            [col for col in df.columns if bacteria_col_keyword in col or col in keep]]
+            [col for col in df.columns if any([i in col for i in bacteria_col_keywords]) or col in keep]]
     else:
         return df[
-            [col for col in df.columns if bacteria_col_keyword in col]]
+            [col for col in df.columns if any([i in col for i in bacteria_col_keywords])]]
 
 
 def add_tag_to_predict(censor_df, uncensor_df, tag, data_augmented=True):
@@ -163,21 +172,25 @@ def add_tag_to_predict(censor_df, uncensor_df, tag, data_augmented=True):
     :param tag: name of tag
     :return: censor_df, uncensor_df
     """
+    if censor_df["new_" + tag].max() > 50:
+        days = 1
+    else:
+        days = 365.25
     # add column tag to censored
     if data_augmented:
-        censor_df["time_to_" + tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df["new_" + tag] * 365.25).apply(
+        censor_df["time_to_" + tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df["new_" + tag] * days).apply(
             lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(censor_df["DATE"])) / pd.to_timedelta(1,
                                                                                                                    unit='D')
     else:
-        censor_df["time_to_" + tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df[tag] * 365.25).apply(
+        censor_df["time_to_" + tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df[tag] * days).apply(
             lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(censor_df["DATE"])) / pd.to_timedelta(1,
                                                                                                                    unit='D')
     # add column  for loss to censored
-    censor_df[tag + "_for_loss"] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df[tag] * 365.25).apply(
+    censor_df[tag + "_for_loss"] = ((pd.to_datetime(censor_df["bmtdate"]) + (censor_df[tag] * days).apply(
         lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(censor_df["DATE"])) / pd.to_timedelta(1,
                                                                                                                unit='D')
     # add column to tag to uncensored
-    uncensor_df["time_to_" + tag] = ((pd.to_datetime(uncensor_df["bmtdate"]) + (uncensor_df[tag] * 365.25).apply(
+    uncensor_df["time_to_" + tag] = ((pd.to_datetime(uncensor_df["bmtdate"]) + (uncensor_df[tag] * days).apply(
         lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(uncensor_df["DATE"])) / pd.to_timedelta(1,
                                                                                                                  unit='D')
     return censor_df, uncensor_df

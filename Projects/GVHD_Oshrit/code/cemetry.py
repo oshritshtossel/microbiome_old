@@ -105,3 +105,30 @@
 #
 #                 print(losses[-1:])
 #                 print(test_losses[-1:])
+from scipy.stats import spearmanr
+from sklearn.metrics import r2_score
+from sklearn.svm import SVR
+import tqdm
+
+from Projects.GVHD_Oshrit.code.neaural_network import split_by_id
+
+
+def try_svr(stool_uncensor_df, tag, test_size=0.2, times_to_calculate=200):
+    all_p = []
+    all_gt = []
+    ssc_s, corr_s = 0, 0
+    for i in tqdm.tqdm(range(times_to_calculate)):
+        aa = stool_uncensor_df[stool_uncensor_df.columns[:111]]
+        X_train, X_test, y_train, y_test, _ = split_by_id(aa, stool_uncensor_df["time_to_" + tag],
+                                                          stool_uncensor_df["subjid"], test_size=test_size)
+        if len(y_test) == 0:
+            continue
+        mm = SVR(kernel="linear")
+        mm.fit(X_train, y_train)
+        x = mm.predict(X_test)
+        # all_p.extend(mm.predict(X_test))
+        # all_gt.extend(y_test)
+        ssc_s += r2_score(y_test, x)
+        corr_s += spearmanr(x, y_test)[0]
+    print(f"R2: {ssc_s / times_to_calculate}")
+    print(f"Corr: {corr_s / times_to_calculate}")

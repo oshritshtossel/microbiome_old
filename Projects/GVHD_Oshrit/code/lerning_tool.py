@@ -7,7 +7,7 @@ from Projects.GVHD_Oshrit.code.preprocces import add_tag_to_predict
 from Projects.GVHD_Oshrit.code.utils import in_debug
 
 
-def last_samples_before_gvhd(otu: pd.DataFrame, censored: bool, all=False) -> pd.DataFrame:
+def last_samples_before_gvhd(otu: pd.DataFrame,tag, censored: bool, all=False) -> pd.DataFrame:
     """
     The func returns a new data frame which consists of only the last sample of the censored samples
     or- the last sample taken before GVHD event for the uncensored samples
@@ -19,7 +19,7 @@ def last_samples_before_gvhd(otu: pd.DataFrame, censored: bool, all=False) -> pd
         if censored is False:
             # Uncensored
             subject_no_sampels_after_cgvhd = subject[1].loc[
-                pd.to_numeric(pd.to_datetime(subject[1]["DATE"]) - subject[1]["date_ofttcgvhd"]) < 0]
+                pd.to_numeric(pd.to_datetime(subject[1]["DATE"]) - subject[1]["date_of" + tag]) < 0]
             if all:
                 last_test = subject_no_sampels_after_cgvhd.T[subject_no_sampels_after_cgvhd.index.sort_values()].T
             else:
@@ -60,12 +60,12 @@ class Augment(object):
         self.uncensored_org_tag = uncensord_df[tag]
 
         # remove all columns which are not bacterias:
-        self.last_samples_censord = last_samples_before_gvhd(censor_df, censored=True)
+        self.last_samples_censord = last_samples_before_gvhd(censor_df, tag.replace("time_to_", ""), censored=True)
         self.last_samples_censord_only_microbiom = self.last_samples_censord[
             [col for col in otu.columns if bacteria_col_keyword in col]]
         self.last_censord_tag_before_gvhd = censor_df[tag].loc[self.last_samples_censord.index]
 
-        self.last_samples_uncensord = last_samples_before_gvhd(uncensord_df, censored=False,
+        self.last_samples_uncensord = last_samples_before_gvhd(uncensord_df, tag.replace("time_to_", ""), censored=False,
                                                                all=not only_last_sample_before_gvhd)
         self.last_samples_uncensord_only_microbiom = self.last_samples_uncensord[
             [col for col in otu.columns if bacteria_col_keyword in col]]
@@ -155,21 +155,25 @@ class Bar_Augment(Augment):
         :param tag: name of tag
         :return: censor_df, uncensor_df
         """
+        if censored_df["new_" + self.tag].max() > 50:
+            days = 1
+        else:
+            days = 365.25
         # add column tag to censored
         censored_df["time_to_" + self.tag] = ((pd.to_datetime(censored_df["bmtdate"]) + (
-                censored_df["new_" + self.tag] * 365.25).apply(
+                censored_df["new_" + self.tag] * days).apply(
             lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(censored_df["DATE"])) / pd.to_timedelta(
             1,
             unit='D')
 
         # add column  for loss to censored
         censored_df[self.tag + "_for_loss"] = ((pd.to_datetime(censored_df["bmtdate"]) + (
-                censored_df[self.tag] * 365.25).apply(
+                censored_df[self.tag] * days).apply(
             lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(censored_df["DATE"])) / pd.to_timedelta(1,
                                                                                                                      unit='D')
         # add column to tag to uncensored
         uncensored_df["time_to_" + self.tag] = ((pd.to_datetime(uncensored_df["bmtdate"]) + (
-                uncensored_df[self.tag] * 365.25).apply(
+                uncensored_df[self.tag] * days).apply(
             lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(uncensored_df["DATE"])) / pd.to_timedelta(
             1,
             unit='D')
@@ -194,17 +198,21 @@ class Lozon_Augment(Augment):
         :param tag: name of tag
         :return: censor_df, uncensor_df
         """
+        if censor_df[self.tag].max() > 50:
+            days = 1
+        else:
+            days = 365.25
         # add column tag to censored
         censor_df["time_to_" + self.tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (
-                censor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                censor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             censor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         # add column  for loss to censored
         censor_df[self.tag + "_for_loss"] = ((pd.to_datetime(censor_df["bmtdate"]) + (
-                censor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                censor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             censor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         # add column to tag to uncensored
         uncensor_df["time_to_" + self.tag] = ((pd.to_datetime(uncensor_df["bmtdate"]) + (
-                uncensor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                uncensor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             uncensor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         return censor_df, uncensor_df
 
@@ -279,17 +287,21 @@ class Bar_thesis_Augment(Augment):
         :param tag: name of tag
         :return: censor_df, uncensor_df
         """
+        if censor_df[self.tag].max() > 50:
+            days = 1
+        else:
+            days = 365.25
         # add column tag to censored
         censor_df["time_to_" + self.tag] = ((pd.to_datetime(censor_df["bmtdate"]) + (
-                censor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                censor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             censor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         # add column  for loss to censored
         censor_df[self.tag + "_for_loss"] = ((pd.to_datetime(censor_df["bmtdate"]) + (
-                censor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                censor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             censor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         # add column to tag to uncensored
         uncensor_df["time_to_" + self.tag] = ((pd.to_datetime(uncensor_df["bmtdate"]) + (
-                uncensor_df[self.tag] * 365.25).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
+                uncensor_df[self.tag] * days).apply(lambda x: relativedelta.relativedelta(days=x))) - pd.to_datetime(
             uncensor_df["DATE"])) / pd.to_timedelta(1, unit='D')
         return censor_df, uncensor_df
 
@@ -359,9 +371,7 @@ class MLE_Augment(Bar_thesis_Augment):
                 (self.lamda * np.e ** (-self.lamda * t)) / (1 - (np.e ** (-self.lamda * t))))
 
     def augment(self, lamda):
-
-        self.lamda = 0.001
-
+        self.lamda=lamda
         t = pd.Series()
         for i in self.TC.index:
             self.tc = self.TC[i]
@@ -379,7 +389,7 @@ class MLE_Augment(Bar_thesis_Augment):
         :return: new censored df with the new column
         """
         self.bar_good_frac = self.good_frac
-        self.sigma = self.TC.values.mean()*2
+        self.sigma = self.TC.values.mean() * 2
         artificial_data_for_censored_sample = self.augment(lamda)
 
         censored_df["new_" + self.tag] = artificial_data_for_censored_sample

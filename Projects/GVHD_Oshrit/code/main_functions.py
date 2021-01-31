@@ -39,9 +39,10 @@ def load_and_preprocces_saliva_and_stool(saliva_otu_path, saliva_map_path, stool
             stool_mapping = stool_mapping[~stool_mapping[key].str.contains(word_from_column_to_delete[key], na=False)]
 
     saliva_otu, saliva_tag, saliva_pca = preprocces.preprocces(saliva_OTU_table, saliva_mapping, "ttext_cgvhd",
-                                                               "saliva", "data", tax=6)
+                                                               "saliva", "data", tax=5, taxnomy_group="mean",
+                                                               z_scoring='No')
     stool_otu, stool_tag, stool_pca = preprocces.preprocces(stool_OTU_table, stool_mapping, "ttext_cgvhd", "stool",
-                                                            "data", tax=6)
+                                                            "data", tax=5, taxnomy_group="mean", z_scoring='No',epsilon=1)
     return saliva_otu, saliva_tag, saliva_pca, stool_otu, stool_tag, stool_pca
 
 
@@ -92,3 +93,11 @@ def preprocces_and_augment(otu: pd.DataFrame, tag: str, decision_column: str, au
     censor_df, uncensor_df = augmentor_instance.add_tag_to_predict(censor_df, uncensor_df)
 
     return censor_df, uncensor_df, augmentor_instance
+
+
+def count_events_competing_events(df, column_name) -> dict:
+    d_count = {0: 0, 1: 0, 2: 0}
+    for subject in df.groupby(df["subjid"]):
+        compete_val = subject[1].iloc[0][column_name]
+        d_count[compete_val] += 1
+    return d_count

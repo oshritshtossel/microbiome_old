@@ -2,6 +2,7 @@ import random
 from typing import Tuple, Any
 from warnings import warn
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
@@ -45,9 +46,10 @@ def split_by_id(Data, Class, ID, test_size=0.33) -> (pd.DataFrame, pd.DataFrame,
 def with_censored_split_train_test_censored_and_uncensord(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame,
                                                           tag_name: str,
                                                           id_col="subjid", additional_cols_to_keep: list = [],
-                                                          train_percent=0.7, bacteria_col_keyword="k__Bacteria") -> \
-Tuple[
-    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
+                                                          train_percent=0.7,
+                                                          bacteria_col_keyword=["k__Bacteria", "k__Archaea"]) -> \
+        Tuple[
+            pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
     """
     REMARK: Works for timedelta y type only
     1.split the data to train which consist of all the censored samples and completes to train percent (70) of
@@ -107,10 +109,10 @@ Tuple[
 
     # only microbiom features:
     x_test_df = delete_features_according_to_key(x_test_df, keep=["is_censored"],
-                                                 bacteria_col_keyword=bacteria_col_keyword)
+                                                 bacteria_col_keywords=bacteria_col_keyword)
     x_censored_test_df = delete_features_according_to_key(x_censored_test_df, additional_cols_to_keep)
     x_censored_test_df = delete_features_according_to_key(x_censored_test_df, keep=["is_censored"],
-                                                          bacteria_col_keyword=bacteria_col_keyword)
+                                                          bacteria_col_keywords=bacteria_col_keyword)
     x_test_df = x_test_df.append(x_censored_test_df)
     y_test_df = y_test_df.append(y_censored_test_df)
 
@@ -125,7 +127,7 @@ Tuple[
 
 def split_train_test_censored_and_uncensord(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: str,
                                             id_col="subjid", additional_cols_to_keep: list = [],
-                                            train_percent=0.7, bacteria_col_keyword="k__Bacteria") -> Tuple[
+                                            test_size=0.3, bacteria_col_keyword=None) -> Tuple[
     pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
     """
     REMARK: Works for timedelta y type only
@@ -150,6 +152,8 @@ def split_train_test_censored_and_uncensord(censor_df: pd.DataFrame, uncensor_df
                                                                                                       uncensor_df,
                                                                                                       tag_name)
     """
+    if bacteria_col_keyword is None:
+        bacteria_col_keyword = ["k__Bacteria", "k__Archaea"]
     additional_cols_to_keep.append("is_censored")
     if len(censor_df.columns) != len(uncensor_df.columns):
         warn(
@@ -170,7 +174,7 @@ def split_train_test_censored_and_uncensord(censor_df: pd.DataFrame, uncensor_df
     pre_x_train_only_censord[tag_name] = censored_train_df[tag_name]
 
     x_train_df_from_uncensored, x_test_df, y_train_df, y_test_df, _ = split_by_id(
-        uncensor_df, uncensor_df[tag_name], uncensor_df[id_col], test_size=0.3)
+        uncensor_df, uncensor_df[tag_name], uncensor_df[id_col], test_size=test_size)
 
     # add the flag column with censoring information
     x_train_df_from_uncensored["is_censored"] = 0
@@ -181,7 +185,7 @@ def split_train_test_censored_and_uncensord(censor_df: pd.DataFrame, uncensor_df
     x_test_df["is_censored"] = 0
     # only microbiom features:
     x_test_df = delete_features_according_to_key(x_test_df, keep=["is_censored"],
-                                                 bacteria_col_keyword=bacteria_col_keyword)
+                                                 bacteria_col_keywords=bacteria_col_keyword)
 
     x_train_df = pre_x_train_only_censord.append(pre_x_train_only_uncensord)
     y_train_df = y_train_df.append(censored_train_df[tag_name])
@@ -299,8 +303,14 @@ def split_train_validation(x_train: pd.DataFrame, y_train: pd.Series, tag_name, 
     @return: train tensor validation tensor
     """
     if k_fold == 0:
-        train_loader = DataLoader(dataset=TensorDataset(torch.from_numpy(x_train.values).float(),
-                                                        torch.from_numpy(y_train.values).float()), batch_size=20)
+        try:
+            del x_train[id_col]
+            del x_train[tag_name]
+        except:
+            pass
+        train_loader = DataLoader(dataset=TensorDataset(torch.from_numpy(x_train.values.astype("float")).float(),
+                                                        torch.from_numpy(y_train.values.astype("float")).float()),
+                                  batch_size=20)
         return train_loader, None
     uncensored_x_train = x_train.loc[x_train["is_censored"] == 0]
     censored_x_train = x_train.loc[x_train["is_censored"] == 1]
@@ -452,7 +462,7 @@ class custom_nn_runner(object):
                 loss += (y[i] - yhat[i]) ** 2
         return loss / len(y)
 
-    def run_train(self, x_train_df, y_train_df, index_of_additional_parameters, test_loader, tag_name):
+    def run_train(self, x_train_df, y_train_df, index_of_additional_parameters, test_loader, tag_name, no_fold=False):
         """
         1. split to test and then split the train to train + validation
         2. init the model with the right parameters
@@ -464,53 +474,156 @@ class custom_nn_runner(object):
         @return: list of train losses, list of valid losses, list of tests losses,
         mse value of last validation epoch
         """
-        # Spilt to train test
-        train_loader, valid_loader = split_train_validation(x_train_df, y_train_df, tag_name, k_fold=self.k_fold)
+        last_epoch_mse_loss_for_stop = 0
+        sum_corr_valid, sum_r2_valid, sum_corr_test, sum_r2_test, sum_corr_train, sum_r2_train = 0, 0, 0, 0, 0, 0
 
-        # Init the model with number of features
-        self.model = self.model_kind(len(train_loader.dataset[0][0]) + index_of_additional_parameters)
-        if self.optimizer.lower() == "adam":
-            optimizer = optim.Adam(self.model.parameters(), weight_decay=self.weight_decay, lr=self.learning_rate)
-
-        # Creates the train_step function for our model, loss function and optimizer
-        train_step = make_train_step_no_last_columns(self.model, self.loss_fn, optimizer,
-                                                     index_of_additional_parameters)
         # Pre operations to train
-        train_losses, test_losses, valid_losses = [], [], []
-        min_loss = float("inf")
-        num_of_runs_with_no_change = NUM_OF_RUNS_WITH_NO_CHANGE_IN_LOSS
-        last_epoch_mse_loss = None
+        fig_loss, axs_loss = plt.subplots(max(self.k_fold, 1), squeeze=False)
+        fig_corr, axs_corr = plt.subplots(max(self.k_fold, 1), squeeze=False)
+        fig_r2, axs_r2 = plt.subplots(max(self.k_fold, 1), squeeze=False)
+        if self.k_fold == 0:
+            fig_scatters, axs_scatters = plt.subplots(1, 2, squeeze=False)
+        else:
+            fig_scatters, axs_scatters = plt.subplots(self.k_fold, 3, squeeze=False)
 
-        for epoch in range(self.max_epochs):
-            for k in range(max(self.k_fold, 1)):
-                train_loader, valid_loader = split_train_validation(x_train_df, y_train_df, tag_name,
-                                                                    k_fold=self.k_fold)
+        for k in range(max(self.k_fold, 1)):
+            train_loader, valid_loader = split_train_validation(x_train_df, y_train_df, tag_name,
+                                                                k_fold=self.k_fold)
+            # Init the model with number of features
+            self.model = self.model_kind(len(train_loader.dataset[0][0]) + index_of_additional_parameters)
+            if self.optimizer.lower() == "adam":
+                optimizer = optim.Adam(self.model.parameters(), weight_decay=self.weight_decay, lr=self.learning_rate)
+                # Creates the train_step function for our model, loss function and optimizer
+            train_step = make_train_step_no_last_columns(self.model, self.loss_fn, optimizer,
+                                                         index_of_additional_parameters)
+            train_losses, test_losses, valid_losses = [], [], []
+            min_loss = float("inf")
+            num_of_runs_with_no_change = NUM_OF_RUNS_WITH_NO_CHANGE_IN_LOSS
+            last_epoch_mse_loss = None
+            corr_train_all, r2_train_all = [], []
+
+            for epoch in tqdm(range(self.max_epochs)):
                 train_k_loss, Yhat_train, Y_gt_train = self._train(train_loader, train_step)
                 if self.k_fold > 0:
-                    valid_k_loss, last_epoch_mse_loss, corr, r2, Yhat_valid, Y_gt_valid = self._test(valid_loader,
-                                                                                                     index_of_additional_parameters)
+                    valid_k_loss, last_epoch_mse_loss, corr_valid, r2_valid, Yhat_valid, Y_gt_valid = self._test(
+                        valid_loader,
+                        index_of_additional_parameters)
+                test_loss, _, corr_test, r2_test, Yhat_test, Y_gt_test = self._test(test_loader, -1)
 
-            test_loss, _, _, _, Yhat_test, Y_gt_test = self._test(test_loader, -1)
+                corr_train, r2_train = spearmanr(Y_gt_train, Yhat_train)[0], r2_score(Yhat_train, Y_gt_train)
+                corr_train_all.append(corr_train)
+                r2_train_all.append(r2_train)
 
-            test_losses.append(test_loss / len(test_loader.dataset[0][0]))
-            train_losses.append((train_k_loss / max(self.k_fold, 1)) / len(train_loader.dataset[0][0]))
+                test_losses.append(test_loss / len(test_loader.dataset[0][0]))
+                train_losses.append((train_k_loss) / len(train_loader.dataset[0][0]))
+                if self.k_fold > 0:
+                    valid_losses.append((valid_k_loss) / len(valid_loader.dataset[0][0]))
+
+                    # stopping rule-min does not decrease for 20 epochs:
+                    num_of_runs_with_no_change -= 1
+                    if min_loss > (valid_k_loss) / len(valid_loader.dataset[0][0]):
+                        min_loss = (valid_k_loss) / len(valid_loader.dataset[0][0])
+                        num_of_runs_with_no_change = NUM_OF_RUNS_WITH_NO_CHANGE_IN_LOSS
+                    # print(num_of_runs_with_no_change)
+                    if num_of_runs_with_no_change <= 0:
+                        break
+            sum_corr_test += corr_test
+            sum_r2_test += r2_test
+            sum_corr_train += corr_train
+            sum_r2_train += r2_train
+
             if self.k_fold > 0:
-                valid_losses.append((valid_k_loss / max(self.k_fold, 1)) / len(valid_loader.dataset[0][0]))
+                sum_corr_valid += corr_valid
+                sum_r2_valid += r2_valid
+                axs_loss[k][0].plot(valid_losses, label="Validation loss")
 
-                # stopping rule-min does not decrease for 20 epochs:
-                num_of_runs_with_no_change -= 1
-                if min_loss > (valid_k_loss / max(self.k_fold, 1)) / len(valid_loader.dataset[0][0]):
-                    min_loss = (valid_k_loss / max(self.k_fold, 1)) / len(valid_loader.dataset[0][0])
-                    num_of_runs_with_no_change = NUM_OF_RUNS_WITH_NO_CHANGE_IN_LOSS
-                print(num_of_runs_with_no_change)
-                if num_of_runs_with_no_change <= 0:
-                    break
-        # ploting pred vs tag:
-        scatter_pred_vs_tag(Yhat_train, Y_gt_train, title="train")
-        scatter_pred_vs_tag(Yhat_valid, Y_gt_valid, title="validation")
-        scatter_pred_vs_tag(Yhat_test, Y_gt_test, title="test")
-        return train_losses, test_losses, valid_losses, (last_epoch_mse_loss / max(self.k_fold, 1)) / len(
-            valid_loader.dataset[0][0]), corr, r2
+            axs_loss[k][0].plot(train_losses, label="Train loss")
+            axs_loss[k][0].plot(test_losses, label="Test loss")
+            axs_loss[k][0].set_title("Loss per epoch")
+            axs_loss[k][0].legend()
+
+            axs_corr[k][0].plot(corr_train_all, label="Corr on train")
+            axs_corr[k][0].set_title("Corralation on train")
+            # TODO: r2 scale from -1 : 1
+            axs_r2[k][0].plot(r2_train_all, label="R2 on train")
+            axs_r2[k][0].set_title("R2 on train")
+
+            scatter_pred_vs_tag(Yhat_train, Y_gt_train, ax=axs_scatters[k][0], title="train")
+            if self.k_fold > 0:
+                scatter_pred_vs_tag(Yhat_valid, Y_gt_valid, ax=axs_scatters[k][1], title="validation")
+                scatter_pred_vs_tag(Yhat_test, Y_gt_test, ax=axs_scatters[k][2], title="test")
+            else:
+                scatter_pred_vs_tag(Yhat_test, Y_gt_test, ax=axs_scatters[k][1], title="test")
+
+            try:
+                last_epoch_mse_loss_for_stop += (last_epoch_mse_loss / max(self.k_fold, 1)) / len(
+                    valid_loader.dataset[0][0])
+            except:
+                # This run has no validation
+                last_epoch_mse_loss_for_stop = None
+                corr_valid = None
+                r2_valid = None
+
+        if self.k_fold > 0:
+            last_epoch_mse_loss_for_stop /= self.k_fold
+            sum_corr_valid /= self.k_fold
+            sum_r2_valid /= self.k_fold
+            sum_corr_test /= self.k_fold
+            sum_r2_test /= self.k_fold
+            sum_corr_train /= self.k_fold
+            sum_r2_train /= self.k_fold
+
+        fig_r2.show()
+        fig_corr.show()
+        fig_loss.show()
+        fig_scatters.show()
+
+        return train_losses, test_losses, valid_losses, last_epoch_mse_loss_for_stop, sum_corr_valid, sum_r2_valid \
+            , sum_corr_test, sum_r2_test, sum_corr_train, sum_r2_train
+
+
+def censoring_nn_leave_one_out(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: str, n_epochs):
+    org_uncensor_df = uncensor_df.copy()
+    X_meta_train, Y_meta_train = pd.DataFrame(), pd.Series()
+    predictions = []
+    gts = []
+    sub_done = 0
+    while len(uncensor_df) > 0:
+        sub_done += 1
+        model = Model_luzon
+        x_train_df, y_train_df, x_test_df, y_test_df, index_of_additional_parameters = split_train_test_censored_and_uncensord(
+            censor_df, uncensor_df, tag_name, additional_cols_to_keep=[tag_name.replace("time_to_", "") + "_for_loss"],
+            test_size=1 / uncensor_df["subjid"].unique().size)
+
+        x_train_df = x_train_df.append(X_meta_train)
+        y_train_df = y_train_df.append(Y_meta_train)
+
+        uncensor_df = uncensor_df.loc[~uncensor_df.index.isin(x_test_df.index)]
+        X_meta_train = X_meta_train.append(x_test_df)
+        Y_meta_train = Y_meta_train.append(y_test_df)
+
+        test_loader = DataLoader(dataset=TensorDataset(torch.from_numpy(x_test_df.values).float(),
+                                                       torch.from_numpy(y_test_df.values).float()), batch_size=20)
+        alpha = 0  # 0.0078125
+        beta = 0  # 0.0009765625
+        lr = 0.001
+        wd = 0.1
+        loss_fn = My_loss(alpha, beta)
+
+        nn_runner = custom_nn_runner(model, loss_fn, learning_rate=lr, weight_decay=wd, epochs=n_epochs)
+        train_losses, test_losses, valid_losses, last_epoch_mse_loss, corr_valid, r2_valid, corr_test, r2_test, corr_train, r2_train = nn_runner.run_train(
+            x_train_df, y_train_df, index_of_additional_parameters, test_loader, tag_name)
+        Y = nn_runner._test(test_loader, -1)
+        predictions.extend(Y[4])
+        gts.extend(Y[5])
+        corr = spearmanr(predictions, gts)[0]
+        r2 = r2_score(gts, predictions)
+        print(
+            f"Subjects done: [{sub_done}/{org_uncensor_df['subjid'].unique().size}]. train_loss: {round(train_losses[-1] / len(x_train_df), 4)}. Current Corr test: {round(corr, 4)}. Current R2 test: {round(r2, 4)}. This run corr train: {round(corr_train, 4)}. This run r2 train: {round(r2_train, 4)}")
+        del nn_runner
+    corr = spearmanr(predictions, gts)[0]
+    r2 = r2_score(gts, predictions)
+    print(f"Corr: {corr}. R2: {r2}")
 
 
 def censoring_nn(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: str, n_epochs, title, title_heatmap,
@@ -538,7 +651,8 @@ def censoring_nn(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: s
     arr_r2 = list()
     ###
     x_train_df, y_train_df, x_test_df, y_test_df, index_of_additional_parameters = split_train_test_censored_and_uncensord(
-        censor_df, uncensor_df, tag_name, additional_cols_to_keep=["ttcgvhd_for_loss"])
+        censor_df, uncensor_df, tag_name, additional_cols_to_keep=[tag_name.replace("time_to_", "") + "_for_loss"],
+        test_size=0.3)
 
     test_loader = DataLoader(dataset=TensorDataset(torch.from_numpy(x_test_df.values).float(),
                                                    torch.from_numpy(y_test_df.values).float()),
@@ -557,7 +671,7 @@ def censoring_nn(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: s
                 for wd in [0.1]:
                     nn_runner = custom_nn_runner(model, loss_fn, learning_rate=lr, weight_decay=wd, k_fold=k_fold,
                                                  epochs=n_epochs)
-                    train_losses, test_losses, valid_losses, last_epoch_mse_loss, corr_valid, r2_valid = nn_runner.run_train(
+                    train_losses, test_losses, valid_losses, last_epoch_mse_loss, corr_valid, r2_valid, corr_test, r2_test, corr_train, r2_train = nn_runner.run_train(
                         x_train_df,
                         y_train_df,
                         index_of_additional_parameters,
@@ -565,18 +679,18 @@ def censoring_nn(censor_df: pd.DataFrame, uncensor_df: pd.DataFrame, tag_name: s
                         tag_name)
                     report.append(f"lr: {lr}, wd: {wd}, mse_loss: {last_epoch_mse_loss}")
                     print(
-                        f"lr: {lr}, wd: {wd}, mse_loss: {last_epoch_mse_loss}, alpha:{values[alpha]}, beta:{values[beta]}")
-                    plot_and_save_losses(train_losses, test_losses, values[alpha], values[beta], lr, wd,
-                                         valid_losses=valid_losses, title=title)
-                    plot_and_save_losses(train_losses, test_losses, values[alpha], values[beta], lr, wd,
-                                         valid_losses=valid_losses,
-                                         plot_dots=True, title=title)
+                        f"lr: {lr}, wd: {wd}, mse_loss: {last_epoch_mse_loss}, alpha:{values[alpha]}, beta:{values[beta]}. Corr test: {corr_test}. R2 test: {r2_test}. Corr train: {corr_train}. R2 train: {r2_train}.")
+                    # plot_and_save_losses(train_losses, test_losses, values[alpha], values[beta], lr, wd,
+                    #                      valid_losses=valid_losses, title=title, save_path=f"plots/{tag_name}")
+                    # plot_and_save_losses(train_losses, test_losses, values[alpha], values[beta], lr, wd,
+                    #                      valid_losses=valid_losses, save_path=f"plots/{tag_name}",
+                    #                      plot_dots=True, title=title)
                     del nn_runner
                     arr_mse[alpha].append(last_epoch_mse_loss)
                     arr_corr[alpha].append(corr_valid)
                     arr_r2[alpha].append(r2_valid)
     [print(i) for i in report]
     print(arr_mse)
-    create_heatmap(np.array(arr_mse), values, title="mse" + title_heatmap)
-    create_heatmap(np.array(arr_corr), values, title="corr" + title_heatmap)
-    create_heatmap(np.array(arr_r2), values, title="r2" + title_heatmap)
+    create_heatmap(np.array(arr_mse), values, title="mse" + title_heatmap, save_path=tag_name)
+    create_heatmap(np.array(arr_corr), values, title="corr" + title_heatmap, save_path=tag_name)
+    create_heatmap(np.array(arr_r2), values, title="r2" + title_heatmap, save_path=tag_name)

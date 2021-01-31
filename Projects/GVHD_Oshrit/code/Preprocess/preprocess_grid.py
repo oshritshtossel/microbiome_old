@@ -22,6 +22,7 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False,taxonomy_c
     relative_z = dict_params['norm_after_rel']
     var_th_delete = float(dict_params['std_to_delete'])
     pca = dict_params['pca']
+    threshold = dict_params["minimum_bacteria_appearance"]
 
 
 
@@ -91,7 +92,7 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False,taxonomy_c
         plt.savefig(os.path.join(folder, "density_of_samples.svg"), bbox_inches='tight', format='svg')
 
     # drop bacterias with single values
-    as_data_frame = drop_rare_bacteria(as_data_frame)
+    as_data_frame = drop_rare_bacteria(as_data_frame,threshold)
 
     if preform_norm == 'log':
         print('Perform log normalization...')
@@ -235,7 +236,7 @@ def drop_bacteria(as_data_frame):
     return as_data_frame.drop(columns=bacterias_to_dump)
 
 
-def drop_rare_bacteria(as_data_frame):
+def drop_rare_bacteria(as_data_frame,threshold:int=5):
     bact_to_num_of_non_zeros_values_map = {}
     bacteria = as_data_frame.columns
     num_of_samples = len(as_data_frame.index) - 1
@@ -252,7 +253,7 @@ def drop_rare_bacteria(as_data_frame):
 
     rare_bacteria = []
     for key, val in bact_to_num_of_non_zeros_values_map.items():
-        if val < 5:
+        if val < threshold:
             rare_bacteria.append(key)
     as_data_frame.drop(columns=rare_bacteria, inplace=True)
     print(str(len(rare_bacteria)) + " bacteria with less then 5 non-zero value: ")

@@ -39,7 +39,7 @@ class CreateOtuAndMappingFiles(object):
         # concat with extra features by index
         df = self.otu_features_df.join(self.extra_features_df)
         # create a new csv file
-        otu_path = os.path.join(folder, 'OTU_merged_' + str(task_name) + '.csv')
+        otu_path = os.path.join(folder, 'New_OTU_merged_' + str(task_name) + '.csv')
         df.to_csv(otu_path)
         tag_path = os.path.join(folder, 'Tag_file_' + str(task_name) + '.csv')
         self.tags_df.to_csv(tag_path)
