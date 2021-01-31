@@ -258,7 +258,7 @@ def vis_predict(configuration_stats, title=None , epoch_to_use=None):
     test_y = np.array(total_test_real).flatten()
     test_y_predicted = np.array(total_test_predicted).flatten()
 
-    if train_y[0].shape != ():
+    if train_y[0].shape is not ():
         total=[]
         for a in train_y:
             total += a.tolist()
@@ -269,7 +269,7 @@ def vis_predict(configuration_stats, title=None , epoch_to_use=None):
             total += a.tolist()
         train_y_predicted = np.array(total)
 
-    if test_y[0].shape != ():
+    if test_y[0].shape is not ():
         total = []
         for a in test_y:
             total += a.tolist()

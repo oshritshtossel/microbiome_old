@@ -6,6 +6,8 @@ import numpy as np
 from sklearn import preprocessing
 import seaborn as sns
 from collections import Counter
+
+from Plot.plot_rho import draw_component_rhos_calculation_figure
 from Preprocess.distance_learning_func import distance_learning
 from sklearn.decomposition import PCA
 from sklearn.decomposition import FastICA
@@ -20,20 +22,19 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
     relative_z = dict_params['norm_after_rel']
     var_th_delete = float(dict_params['std_to_delete'])
     pca = dict_params['pca']
-    threshold = dict_params["minimum_bacteria_appearance"]
 
     taxonomy_col = 'taxonomy'
 
-    as_data_frame = pd.DataFrame(data.T).apply(pd.to_numeric, errors='ignore').copy()
+    as_data_frame = pd.DataFrame(data.T).apply(pd.to_numeric, errors='ignore').copy()  # data frame of OTUs
 
     # fill all taxonomy level with default values
     as_data_frame = fill_taxonomy(as_data_frame, tax_col=taxonomy_col)
 
-    if visualize_data:
-        folder = "preprocess_plots"
+    if visualize_data:  # prepare folder for visualization
+        folder = "static"
         if not os.path.exists(folder):
             os.mkdir(folder)
-        plt.figure('Preprocess')
+        plt.figure('Preprocess')  # make preprocessing figure
         data_frame_for_vis = as_data_frame.copy()
         try:
             data_frame_for_vis = data_frame_for_vis.drop(taxonomy_col, axis=1)
@@ -66,6 +67,10 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
         elif preform_taxnomy_group == 'sub PCA':
             print('PCA')
             as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
+            # as_data_frame = as_data_frame.T
+            # as_data_frame.columns = as_data_frame.iloc[[-1]].values[0]
+            # as_data_frame, _ = distance_learning(perform_distance=True, level=taxnomy_level, preproccessed_data=as_data_frame.iloc[:-1], mapping_file=map_file).T
+            # as_data_frame_b_pca = as_data_frame
 
         as_data_frame = as_data_frame.T
         # here the samples are columns
@@ -81,12 +86,12 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
         visualize_preproccess(as_data_frame, indexes_of_non_zeros, 'After-Taxonomy - Before', [323, 324])
         samples_density = as_data_frame.apply(np.sum, axis=1)
         plt.figure('Density of samples')
-        samples_density.hist(bins=100)
+        samples_density.hist(bins=100, facecolor='Blue')
         plt.title(f'Density of samples')
         plt.savefig(os.path.join(folder, "density_of_samples.svg"), bbox_inches='tight', format='svg')
 
     # drop bacterias with single values
-    as_data_frame = drop_rare_bacteria(as_data_frame,threshold)
+    as_data_frame = drop_rare_bacteria(as_data_frame)
 
     if preform_norm == 'log':
         print('Perform log normalization...')
@@ -99,7 +104,7 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
             # plot histogrm of variance
             samples_variance = as_data_frame.apply(np.var, axis=1)
             plt.figure('Variance of samples')
-            samples_variance.hist(bins=100)
+            samples_variance.hist(bins=100, facecolor='Blue')
             plt.title(
                 f'Histogram of samples variance before z-scoring\nmean={samples_variance.values.mean()},'
                 f' std={samples_variance.values.std()}')
@@ -121,21 +126,24 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
         plt.subplots_adjust(hspace=0.5, wspace=0.5)
         plt.savefig(os.path.join(folder, "preprocess.svg"), bbox_inches='tight', format='svg')
     if visualize_data:
-        plt.figure('standart heatmap')
-        sns.heatmap(as_data_frame, cmap="Blues")
-        plt.title('Heatmap after standartization and taxonomy group level ' + str(taxnomy_level))
-        plt.savefig(os.path.join(folder, "standart_heatmap.png"))
+        plt.figure('standard heatmap')
+        sns.heatmap(as_data_frame, cmap="Blues", xticklabels=False, yticklabels=False)
+        plt.title('Heatmap after standardization and taxonomy group level ' + str(taxnomy_level))
+        plt.savefig(os.path.join(folder, "standard_heatmap.png"))
         corr_method = 'pearson'
-        # if smaples on both axis needed, specify the vmin, vmax and mathod
+        corr_name = 'Pearson'
+        # if samples on both axis needed, specify the vmin, vmax and mathod
         plt.figure('correlation heatmap patient')
-        sns.heatmap(as_data_frame.T.corr(method=corr_method), cmap='RdBu', vmin=-1, vmax=1)
-        plt.title(corr_method + ' correlation patient with taxonomy level ' + str(taxnomy_level))
+        sns.heatmap(as_data_frame.T.corr(method=corr_method), cmap='Blues', vmin=-1, vmax=1, xticklabels=False,
+                    yticklabels=False)
+        plt.title(corr_name + ' correlation patient with taxonomy level ' + str(taxnomy_level))
         # plt.savefig(os.path.join(folder, "correlation_heatmap_patient.svg"), bbox_inches='tight', format='svg')
         plt.savefig(os.path.join(folder, "correlation_heatmap_patient.png"))
 
         plt.figure('correlation heatmap bacteria')
-        sns.heatmap(as_data_frame.corr(method=corr_method), cmap='RdBu', vmin=-1, vmax=1)
-        plt.title(corr_method + ' correlation bacteria with taxonomy level ' + str(taxnomy_level))
+        sns.heatmap(as_data_frame.corr(method=corr_method), cmap='Blues', vmin=-1, vmax=1, xticklabels=False,
+                    yticklabels=False)
+        plt.title(corr_name + ' correlation bacteria with taxonomy level ' + str(taxnomy_level))
         # plt.savefig(os.path.join(folder, "correlation_heatmap_bacteria.svg"), bbox_inches='tight', format='svg')
         plt.savefig(os.path.join(folder, "correlation_heatmap_bacteria.png"))
         # plt.show()
@@ -154,12 +162,10 @@ def preprocess_data(data, dict_params, map_file, visualize_data=False):
         draw_component_rhos_calculation_figure(as_data_frame, map_file, save_folder=folder)
 
     if pca[0] != 0:
-        print('perform' + pca[1] + ' ...')
+        print('perform ' + pca[1] + ' ...')
         as_data_frame, pca_obj, pca = apply_pca(as_data_frame, n_components=pca[0], dim_red_type=pca[1])
     else:
         pca_obj = None
-
-    # as_data_frame.to_csv('test.csv')
 
     return as_data_frame, as_data_frame_b_pca, pca_obj, bacteria, pca
 
@@ -173,11 +179,13 @@ def visualize_preproccess(as_data_frame, indexes_of_non_zeros, name, subplot_idx
     plot_preprocess_stage(result, name + ' without zeros')
 
 
-def plot_preprocess_stage(result, name):
-    plt.hist(result, 1000, facecolor='green', alpha=0.75)
-    plt.title('Distribution ' + name + ' preprocess')
-    plt.xlabel('BINS')
-    plt.ylabel('Count')
+def plot_preprocess_stage(result, name, write_title=False, write_axis=True):
+    plt.hist(result, 1000, facecolor='Blue', alpha=0.75)
+    if write_title:
+        plt.title('Distribution ' + name + ' preprocess')
+    if write_axis:
+        plt.xlabel('BINS')
+        plt.ylabel('Count')
 
 
 def row_normalization(as_data_frame):
@@ -198,15 +206,15 @@ def log_normalization(as_data_frame, eps_for_zeros):
 
 def z_score(as_data_frame, preform_z_scoring):
     if preform_z_scoring == 'row':
-        print('perform z-core on samples...')
+        print('perform z-score on samples...')
         # z-score on columns
         as_data_frame[:] = preprocessing.scale(as_data_frame, axis=1)
     elif preform_z_scoring == 'col':
-        print('perform z-core on features...')
+        print('perform z-score on features...')
         # z-score on rows
         as_data_frame[:] = preprocessing.scale(as_data_frame, axis=0)
     elif preform_z_scoring == 'both':
-        print('perform z-core on samples and features...')
+        print('perform z-score on samples and features...')
         as_data_frame[:] = preprocessing.scale(as_data_frame, axis=1)
         as_data_frame[:] = preprocessing.scale(as_data_frame, axis=0)
 
@@ -230,13 +238,7 @@ def drop_bacteria(as_data_frame):
     return as_data_frame.drop(columns=bacterias_to_dump)
 
 
-def drop_rare_bacteria(as_data_frame, threshold: int = 5):
-    """
-
-    @param as_data_frame:
-    @param threshold: the number of minimum appearances  for a bacteria
-    @return:
-    """
+def drop_rare_bacteria(as_data_frame):
     bact_to_num_of_non_zeros_values_map = {}
     bacteria = as_data_frame.columns
     num_of_samples = len(as_data_frame.index) - 1
@@ -253,7 +255,7 @@ def drop_rare_bacteria(as_data_frame, threshold: int = 5):
 
     rare_bacteria = []
     for key, val in bact_to_num_of_non_zeros_values_map.items():
-        if val < threshold:
+        if val < 5:
             rare_bacteria.append(key)
     as_data_frame.drop(columns=rare_bacteria, inplace=True)
     print(str(len(rare_bacteria)) + " bacteria with less then 5 non-zero value: ")

@@ -9,14 +9,13 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 from LearningMethods.abstract_data_set import AbstractDataLoader
 from LearningMethods.nn import nn_main
-from LearningMethods.simple_learning_model import convert_pca_back_orig
 from Plot.plot_rho import draw_rhos_calculation_figure
 from Plot.plot_3D_pca import plot_data_3d, plot_data_2d, PCA_t_test
 from Plot.plot_auc import roc_auc, calc_auc_on_joined_results, multi_class_roc_auc
 from Plot.plot_coef import create_coeff_plots_by_alogorithm, \
     make_class_coef_plots_from_multiclass_model_binary_sub_models
 from Plot.plot_confusion_mat import edit_confusion_matrix, print_confusion_matrix
-# from infra_functions.general import convert_pca_back_orig
+from infra_functions.general import convert_pca_back_orig
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 n_components = 20

@@ -1,12 +1,10 @@
 from LearningMethods.abstract_data_set import AbstractDataLoader
-# from infra_functions.load_merge_otu_mf import OtuMfHandler
-# from infra_functions.preprocess import preprocess_data
-# from infra_functions.general import apply_pca
+from infra_functions.load_merge_otu_mf import OtuMfHandler
+from infra_functions.preprocess import preprocess_data
 import os
 import pandas as pd
 import numpy as np
-
-from Projects.GVHD_BAR import OtuMfHandler, preprocess_data, apply_pca
+from infra_functions.general import apply_pca
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
