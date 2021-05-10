@@ -6,7 +6,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
 
-def draw_tree(graph):
+def draw_tree(graph, threshold=0.0):
     labelg = {}
     labelr = {}
     colormap = []
@@ -16,15 +16,15 @@ def draw_tree(graph):
             colormap.append("white")
             sizemap.append(0)
         else:
-            if node[1] < 0:
+            if node[1] < -threshold:
                 colormap.append("red")
-                labelr[node] = node[0]
-            elif node[1] > 0:
+                labelr[node] = node[0][-1]
+            elif node[1] > threshold:
                 colormap.append("green")
-                labelg[node] = node[0]
+                labelg[node] = node[0][-1]
             else:
                 colormap.append("yellow")
-            sizemap.append(node[1] / 100 + 5)
+            sizemap.append(node[1] / 1000 + 5)
     # drawing the graph
     pos = graphviz_layout(graph, prog="twopi", root="base")
     #pos = nx.spring_layout(graph)
@@ -39,4 +39,4 @@ def draw_tree(graph):
 
 if __name__ == "__main__":
     with open("series.p", "rb") as f:
-        draw_tree(create_tax_tree(pickle.load(f)))
+        draw_tree(create_tax_tree(pickle.load(f)), 25)
