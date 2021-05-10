@@ -76,24 +76,24 @@ def create_tax_tree(series, zeroflag=False):
         # adding the bacteria in every column
         bac.append(Bacteria(tax, val))
         # connecting to the root of the tempGraph
-        tempGraph.add_edge("anaerobe", bac[i].lst[0])
+        tempGraph.add_edge("anaerobe", (bac[i].lst[0],))
         # connecting all levels of the taxonomy
         for j in range(0, len(bac[i].lst) - 1):
             updateval(tempGraph, bac[i], valdict, j, True)
         # adding the value of the last node in the chain
         updateval(tempGraph, bac[i], valdict, len(bac[i].lst) - 1, False)
-    valdict["anaerobe"] = valdict["Bacteria"] + valdict["Archaea"]
+    valdict["anaerobe"] = valdict[("Bacteria",)] + valdict[("Archaea",)]
     return create_final_graph(tempGraph, valdict, zeroflag)
 
 
 def updateval(graph, bac, vald, num, adde):
     if adde:
-        graph.add_edge(bac.lst[num], bac.lst[num + 1])
+        graph.add_edge(tuple(bac.lst[:num+1]), tuple(bac.lst[:num+2]))
     # adding the value of the nodes
-    if bac.lst[num] in vald:
-        vald[bac.lst[num]] += bac.val
+    if tuple(bac.lst[:num+1]) in vald:
+        vald[tuple(bac.lst[:num+1])] += bac.val
     else:
-        vald[bac.lst[num]] = bac.val
+        vald[tuple(bac.lst[:num+1])] = bac.val
 
 
 def create_final_graph(tempGraph, valdict, zeroflag):
@@ -104,4 +104,5 @@ def create_final_graph(tempGraph, valdict, zeroflag):
                            (e[1], valdict[e[1]]))
     return graph
 
-
+if __name__ == "__main__":
+    create_tax_tree(pickle.load(open("series.p", "rb")))
