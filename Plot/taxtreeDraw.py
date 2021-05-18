@@ -1,12 +1,12 @@
 from LearningMethods.textreeCreate import create_tax_tree
 import networkx as nx
 import pickle
-#import pygraphviz
+import pygraphviz
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
 
-def draw_tree(graph):
+def draw_tree(graph, threshold=0.0):
     labelg = {}
     labelr = {}
     colormap = []
@@ -16,21 +16,27 @@ def draw_tree(graph):
             colormap.append("white")
             sizemap.append(0)
         else:
-            if node[1] < 0:
+            if node[1] < -threshold:
                 colormap.append("red")
-                labelr[node] = node
-            elif node[1] > 0:
+                labelr[node] = node[0][-1]
+            elif node[1] > threshold:
                 colormap.append("green")
-                labelg[node] = node
+                labelg[node] = node[0][-1]
             else:
                 colormap.append("yellow")
-            sizemap.append(node[1] / 100 + 5)
+            sizemap.append(node[1] / 1000 + 5)
     # drawing the graph
-    #pos = graphviz_layout(graph, prog="twopi", root="base")
-    pos = nx.spring_layout(graph)
+    pos = graphviz_layout(graph, prog="twopi", root="base")
+    #pos = nx.spring_layout(graph)
+    lpos = {}
+    for key, loc in pos.items():
+        lpos[key] = (loc[0], loc[1] + 0.02)
     nx.draw(graph, pos, node_size=sizemap, node_color=colormap, width=0.3)
-    nx.nx.draw_networkx_labels(graph, pos, labelr, font_size=7, font_color="red")
-    nx.nx.draw_networkx_labels(graph, pos, labelg, font_size=7, font_color="green")
+    nx.nx.draw_networkx_labels(graph, lpos, labelr, font_size=7, font_color="red")
+    nx.nx.draw_networkx_labels(graph, lpos, labelg, font_size=7, font_color="green")
     plt.draw()
     plt.savefig("taxtree.png")
 
+if __name__ == "__main__":
+    with open("series.p", "rb") as f:
+        draw_tree(create_tax_tree(pickle.load(f)), 25)
