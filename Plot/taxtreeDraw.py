@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 
 
 def draw_tree(graph, threshold=0.0):
+    if type(threshold) == tuple:
+        lower_threshold, higher_threshold = threshold
+    else:
+        lower_threshold, higher_threshold = -threshold, threshold
     labelg = {}
     labelr = {}
     colormap = []
@@ -16,10 +20,10 @@ def draw_tree(graph, threshold=0.0):
             colormap.append("white")
             sizemap.append(0)
         else:
-            if node[1] < -threshold:
+            if node[1] < lower_threshold:
                 colormap.append("red")
                 labelr[node] = node[0][-1]
-            elif node[1] > threshold:
+            elif node[1] > higher_threshold:
                 colormap.append("green")
                 labelg[node] = node[0][-1]
             else:

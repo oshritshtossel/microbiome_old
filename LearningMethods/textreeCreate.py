@@ -1,10 +1,9 @@
-#from openpyxl import Workbook, load_workbook
+# from openpyxl import Workbook, load_workbook
 import re
 import math
 import pandas
 import networkx as nx
 import pickle
-
 
 
 """
@@ -14,7 +13,7 @@ class Bacteria:
     def __init__(self, string, val):
         lst = re.split("; |__| ", string)
         self.val = val
-        #removing letters and blank spaces
+        # removing letters and blank spaces
         for i in range(0, len(lst)):
             if len(lst[i]) < 2:
                 lst[i] = 0
@@ -22,50 +21,6 @@ class Bacteria:
         self.lst = lst
 
 
-"""
-manual layout code, not needed
-def polarToCar(radius, angle):
-    return (radius*math.cos(angle), radius*math.sin(angle))
-
-def sorter(graph, pos):
-    for i in range(0,6):
-        temp = []
-        for node in pos[i]:
-            for elem in graph.neighbors(node):
-                if elem in pos[i+1] and elem not in temp:
-                    temp.append(elem)
-        pos[i+1] = temp
-    pos[0] = list(pos[0])
-
-def manual_layout(graph, pos):
-    sorter(graph, pos)
-    anglelayout = {}
-    layout = {}
-    theta = 2* math.pi/len(pos[6])
-    for i in range (0, len(pos[6])):
-        layout[pos[6][i]] = polarToCar(6, theta * i)
-        anglelayout[pos[6][i]] = theta * i
-    for i in range (5, 0, -1):
-        for node in pos[i]:
-             avg = 0
-             count = 0
-             for n in graph.neighbors(node):
-                 if n in anglelayout:
-                    avg += anglelayout[n]
-                    count +=1
-             if avg != 0 and i > 2:
-                avg /= count
-                layout[node] = polarToCar(i,avg)
-                anglelayout[node] = avg
-             
-                          else:
-                layout[node] = (0,0)
-             
-    for i in pos[0]:
-        layout[i] = (0,0)
-    return layout
-
-"""
 def create_tax_tree(series, zeroflag=False):
     tempGraph = nx.Graph()
     """workbook = load_workbook(filename="random_Otus.xlsx")
