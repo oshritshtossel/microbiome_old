@@ -22,8 +22,8 @@ class _CorrelationPlotter:
         self.significant_correlation = significant_correlation
         self.correlation_tree = correlation_tree
 
-    def plot_graph(self):
-        draw_tree(self.correlation_tree)
+    def plot_graph(self, threshold):
+        draw_tree(self.correlation_tree, threshold)
 
     def plot_positive_negative_bars(self, ax: Axes, percentile, last_taxonomic_levels_to_keep=2, **kwargs):
         significant_bacteria = self.significant_correlation.get_most_significant_coefficients(percentile=percentile)
