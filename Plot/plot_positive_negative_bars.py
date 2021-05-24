@@ -27,9 +27,10 @@ def plot_positive_negative_bars(ax: plt.Axes, values: pd.Series, positive_dict: 
 
     ax.set_yticks(y_position)
     ax.set_yticklabels(sorted_values.index)
-
-    if len(y_position) < 5:
-        ax.set_ylim([i + np.sign(i)*(5 - len(y_position)) for i in ax.get_ylim()])
+    
+    fat_bar_number = 5
+    if len(y_position) < fat_bar_number:
+        ax.set_ylim([i + np.sign(i)*(fat_bar_number - len(y_position)) for i in ax.get_ylim()])
     # ax.set_xlim((1,10))
     ax.set_title(title)
     ax.set_xlabel(x_label)
