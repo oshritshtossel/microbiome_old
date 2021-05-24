@@ -26,7 +26,7 @@ def create_tax_tree(series, zeroflag=False):
     tempGraph = nx.Graph()
     """workbook = load_workbook(filename="random_Otus.xlsx")
     sheet = workbook.active"""
-    valdict = {}
+    valdict = {("Bacteria",): 0, ("Archaea",): 0}
     bac = []
     for i, (tax, val) in enumerate(series.items()):
         # adding the bacteria in every column
