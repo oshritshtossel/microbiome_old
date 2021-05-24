@@ -1,5 +1,5 @@
 from LearningMethods.CorrelationFramework import CorrelationFramework
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import pandas as pd
 
 def use_corr_framwork(X: pd.DataFrame, y, title=None, folder=""):
