@@ -12,7 +12,7 @@ every bacteria is an object to easily store it's information
 class Bacteria:
     def __init__(self, string, val):
         string = string.replace(" ", "")
-        lst = re.split("; |__", string)
+        lst = re.split(";|__", string)
         self.val = val
         # removing letters and blank spaces
         for i in range(0, len(lst)):
