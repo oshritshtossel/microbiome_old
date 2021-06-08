@@ -20,4 +20,4 @@ T-test will be performed between all pairs of groups (component split by a speci
 ![progress_of_components_in_time](https://user-images.githubusercontent.com/28387079/116861277-86232500-ac0b-11eb-85aa-5ca83fe8ed83.png)
 
 #### Plot/plot_relative_frequency.py
-after the data has been preprocessed, and grouped into a taxonomical level, the following function shows the prevelence of each OTU in each person. and groups them all in a singular plot.
+after the data has been preprocessed, and grouped into a taxonomical level, the following function shows the prevelence of each OTU in each person, and groups them all in a singular plot.
