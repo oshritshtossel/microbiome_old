@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 from mpl_toolkits.mplot3d import Axes3D
 import os
 import numpy as np
@@ -100,6 +101,17 @@ def PCA_t_test(group_1, group_2, title="t_test", save=False, folder=None):
                         round(res[1], 5)) + "\n")
 
     return result
+
+def PCoA_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, **kwargs):
+    mds = MDS(n_components=n_comp, dissimilarity="precomputed", **kwargs)
+    pos = mds.fit(dist).embedding_
+    if n_comp == 3:
+        fig, ax = plot_data_3d(pd.DataFrame(pos), pd.Series(range(256)))
+        ax.set_title(title)
+        plt.savefig(f"{folder}/{title}.png")
+    else:
+        print("No visualization for dims other then three.")
+    return pos
 
 
 if __name__ == "__main__":
