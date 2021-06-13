@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from skbio.diversity import beta_diversity
 from skbio.diversity import alpha_diversity
@@ -33,8 +32,11 @@ class Diversity(object):
         distmat = np.zeros(shape=(len(self.otu_df), len(self.otu_df)))
         trees = []
         self.otu_df.columns = self.otu_ids.iloc[0].T
-        for sample in self.otu_df.index:
-            series = self.otu_df.loc[sample]
+        otu_df_unifrac = self.otu_df.copy()
+        if unweighted:
+            otu_df_unifrac = otu_df_unifrac.apply(np.sign)
+        for sample in otu_df_unifrac.index:
+            series = otu_df_unifrac.loc[sample]
             trees.append(create_tax_tree(series))
         trees_partial = trees.copy()
 
@@ -46,20 +48,16 @@ class Diversity(object):
                 total = 0
 
                 for node_a, node_b in zip(tree_a.nodes, tree_b.nodes):
-                    if unweighted:
-                        add = 1
-                    else:
-                        add = node_a[1] + node_b[1]
 
-                    total += add
+                    total += node_a[1] + node_b[1]
 
                     if node_a[1] * node_b[1] == 0 and node_a[1] + node_b[1] != 0:
-                        shared_count += add
+                        shared_count += node_a[1] + node_b[1]
 
                 distmat[ida][idb+ida+1] = shared_count/total
                 distmat[idb+ida+1][ida] = shared_count/total
         distdf = pd.DataFrame(distmat)
-        distdf.index, distdf.columns = self.otu_df.index, self.otu_df.index
+        distdf.index, distdf.columns = otu_df_unifrac.index, otu_df_unifrac.index
         return distdf
 
 
@@ -78,5 +76,5 @@ class Diversity(object):
 
 if __name__ == "__main__":
     diversity = Diversity("OTU.csv")
-    diversity.compute_alpha()
-    diversity.plot_beta(metric="unweighted_unifrac")
+    #diversity.compute_alpha()
+    diversity.plot_beta(metric="weighted_unifrac")
