@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.decomposition import FastICA
 
 from LearningMethods.CorrelationFramework import use_corr_framwork
-from Plot.plot_relative_frequency import plot_rel_freq
+#from Plot.plot_relative_frequency import plot_rel_freq
 
 
 def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
@@ -135,14 +135,8 @@ def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
             as_data_frame = z_score(as_data_frame, 'col')
 
     if visualize_data:
-        taxonomy_reduced = data_frame_for_vis[taxonomy_col].map(lambda x: x.split(';'))
-        taxonomy_reduced = taxonomy_reduced.map(lambda x: ';'.join(x[:tax_level_plot]))
-        data_frame_for_vis[taxonomy_col] = taxonomy_reduced
-        data_frame_for_vis = data_frame_for_vis.groupby(data_frame_for_vis[taxonomy_col]).mean()
-        data_frame_for_vis = data_frame_for_vis.T
-        data_frame_for_vis = row_normalization(data_frame_for_vis)
         plt.clf()
-        plot_rel_freq(data_frame_for_vis, "static", tax_level_plot)
+        plot_rel_freq(data_frame_for_vis, taxonomy_col, tax_level_plot, "static")
 
 
     if visualize_data:

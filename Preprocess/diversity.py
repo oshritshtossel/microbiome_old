@@ -76,5 +76,5 @@ class Diversity(object):
 
 if __name__ == "__main__":
     diversity = Diversity("OTU.csv")
-    #diversity.compute_alpha()
+    diversity.compute_alpha()
     diversity.plot_beta(metric="weighted_unifrac")
