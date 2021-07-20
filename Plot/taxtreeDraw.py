@@ -1,7 +1,7 @@
 from LearningMethods.textreeCreate import create_tax_tree
 import networkx as nx
 import pickle
-import pygraphviz
+#import pygraphviz
 from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 
@@ -16,22 +16,22 @@ def draw_tree(graph, threshold=0.0):
     colormap = []
     sizemap = []
     for node in graph:
-        if node[0] == "base":
+        if node == "base":
             colormap.append("white")
             sizemap.append(0)
         else:
-            if node[1] < lower_threshold:
+            if graph.nodes[node]["val"] < lower_threshold:
                 colormap.append("red")
-                labelr[node] = node[0][-1]
-            elif node[1] > higher_threshold:
+                labelr[node] = node[-1]
+            elif graph.nodes[node]["val"] > higher_threshold:
                 colormap.append("green")
-                labelg[node] = node[0][-1]
+                labelg[node] = node[-1]
             else:
                 colormap.append("yellow")
-            sizemap.append(node[1] / 1000 + 5)
+            sizemap.append(graph.nodes[node]["val"] / 1000 + 5)
     # drawing the graph
-    pos = graphviz_layout(graph, prog="twopi", root="base")
-    #pos = nx.spring_layout(graph)
+    #pos = graphviz_layout(graph, prog="twopi", root="base")
+    pos = nx.spring_layout(graph)
     lpos = {}
     for key, loc in pos.items():
         lpos[key] = (loc[0], loc[1] + 0.02)
@@ -43,4 +43,4 @@ def draw_tree(graph, threshold=0.0):
 
 if __name__ == "__main__":
     with open("series.p", "rb") as f:
-        draw_tree(create_tax_tree(pickle.load(f)), 25)
+        draw_tree(create_tax_tree(pickle.load(f)))

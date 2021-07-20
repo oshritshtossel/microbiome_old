@@ -23,41 +23,45 @@ class Bacteria:
 
 
 def create_tax_tree(series, flag=None):
-    tempGraph = nx.Graph()
+    graph = nx.Graph()
     """workbook = load_workbook(filename="random_Otus.xlsx")
     sheet = workbook.active"""
-    valdict = {("Bacteria",): 0, ("Archaea",): 0}
+    graph.add_node(("Bacteria",), val=0)
+    graph.add_node(("Archaea",), val=0)
     bac = []
     for i, (tax, val) in enumerate(series.items()):
         # adding the bacteria in every column
         bac.append(Bacteria(tax, val))
         # connecting to the root of the tempGraph
-        tempGraph.add_edge("anaerobe", (bac[i].lst[0],))
+        graph.add_edge("anaerobe", (bac[i].lst[0],))
         # connecting all levels of the taxonomy
         for j in range(0, len(bac[i].lst) - 1):
-            updateval(tempGraph, bac[i], valdict, j, True)
+            updateval(graph, bac[i], j, True)
         # adding the value of the last node in the chain
-        updateval(tempGraph, bac[i], valdict, len(bac[i].lst) - 1, False)
-    valdict["anaerobe"] = valdict[("Bacteria",)] + valdict[("Archaea",)]
-    return create_final_graph(tempGraph, valdict, flag)
+        updateval(graph, bac[i], len(bac[i].lst) - 1, False)
+    graph.nodes["anaerobe"]["val"] = graph.nodes[("Bacteria",)]['val']+graph.nodes[("Archaea",)]['val']
+    return create_final_graph(graph, flag)
 
 
-def updateval(graph, bac, vald, num, adde):
+def updateval(graph, bac, num, adde):
     if adde:
+        if tuple(bac.lst[:num+1]) not in graph:
+            graph.add_node(tuple(bac.lst[:num+1]), val=0)
+        if tuple(bac.lst[:num+2]) not in graph:
+            graph.add_node(tuple(bac.lst[:num+2]), val=0)
+
         graph.add_edge(tuple(bac.lst[:num+1]), tuple(bac.lst[:num+2]))
-    # adding the value of the nodes
-    if tuple(bac.lst[:num+1]) in vald:
-        vald[tuple(bac.lst[:num+1])] += bac.val
-    else:
-        vald[tuple(bac.lst[:num+1])] = bac.val
+
+    new_val = graph.nodes[tuple(bac.lst[:num+1])]['val'] + bac.val
+    # set values
+    graph.nodes[tuple(bac.lst[:num+1])]['val'] = new_val
 
 
-def create_final_graph(tempGraph, valdict, flag):
-    graph = nx.Graph()
-    for e in tempGraph.edges():
-        if flag is None or valdict[e[0]] * valdict[e[1]] != 0:
-            graph.add_edge((e[0], valdict[e[0]]),
-                           (e[1], valdict[e[1]]))
+
+def create_final_graph(graph, flag):
+    for e in graph.edges():
+        if flag is not None and e[0]["val"] * e[1]["val"] == 0:
+            graph.remove_edge(e)
     return graph
 
 if __name__ == "__main__":
