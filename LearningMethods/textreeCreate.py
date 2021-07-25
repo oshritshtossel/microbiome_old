@@ -22,7 +22,7 @@ class Bacteria:
         self.lst = lst
 
 
-def create_tax_tree(series, flag=None):
+def create_tax_tree(series, flag=None, keepFlagged=False):
     graph = nx.Graph()
     """workbook = load_workbook(filename="random_Otus.xlsx")
     sheet = workbook.active"""
@@ -40,7 +40,7 @@ def create_tax_tree(series, flag=None):
         # adding the value of the last node in the chain
         updateval(graph, bac[i], len(bac[i].lst) - 1, False)
     graph.nodes["anaerobe"]["val"] = graph.nodes[("Bacteria",)]['val']+graph.nodes[("Archaea",)]['val']
-    return create_final_graph(graph, flag)
+    return create_final_graph(graph, flag, keepFlagged)
 
 
 def updateval(graph, bac, num, adde):
@@ -58,11 +58,13 @@ def updateval(graph, bac, num, adde):
 
 
 
-def create_final_graph(graph, flag):
+def create_final_graph(graph, flag, keepFlagged):
     for e in graph.edges():
-        if flag is not None and e[0]["val"] * e[1]["val"] == 0:
-            graph.remove_edge(e)
+        if flag is not None and (graph.nodes[e[0]]["val"] == flag or graph.nodes[e[1]]["val"] == flag):
+            graph.remove_edge(*e)
+    if flag and keepFlagged:
+        graph.remove_nodes_from(list(nx.isolates(graph)))
     return graph
 
 if __name__ == "__main__":
-    create_tax_tree(pickle.load(open("series.p", "rb")))
+    create_tax_tree(pickle.load(open("graph152forAriel.p", "rb")), flag=0)
