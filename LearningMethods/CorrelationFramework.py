@@ -31,7 +31,7 @@ class _CorrelationPlotter:
                                                self.significant_correlation.coeff_df.drop('real',
                                                             axis=1).values.flatten(), **kwargs)
 
-def use_corr_framwork(X: pd.DataFrame, y, title=None, folder=""):
+def use_corr_framwork(X: pd.DataFrame, y, title=None, folder="plots"):
     cf = CorrelationFramework(X, y)
 
     fig1 = plt.figure(figsize=(12, 6))

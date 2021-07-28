@@ -12,7 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.decomposition import FastICA
 
 from LearningMethods.CorrelationFramework import use_corr_framwork
-#from Plot.plot_relative_frequency import plot_rel_freq
+from Plot.plot_relative_frequency import plot_rel_freq
 
 
 def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
