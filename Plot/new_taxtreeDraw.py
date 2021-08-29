@@ -41,11 +41,11 @@ def get_tree_shape(newick, graph, lower_threshold, higher_threshold):
                 nstyle["fgcolor"] = "green"
             elif graph.nodes[name]["val"] < lower_threshold:
                 nstyle["fgcolor"] = "red"
-        nstyle["size"] = 500
+        nstyle["size"] = 5
         n.set_style(nstyle)
     ts = TreeStyle()
     ts.show_leaf_name = True
-    ts.min_leaf_separation = 100
+    ts.min_leaf_separation = 0.5
     ts.mode = "c"
     ts.root_opening_factor = 0.75
     return t, ts
@@ -57,6 +57,7 @@ def draw_tree(series, threshold=1.0):
         lower_threshold, higher_threshold = -threshold, threshold
     newick, graph = tree_to_newick(series)
     t, ts = get_tree_shape(newick, graph, lower_threshold, higher_threshold)
+    t.render("phylotree.svg", tree_style=ts)
     t.show(tree_style=ts)
 
 if __name__=="__main__":
