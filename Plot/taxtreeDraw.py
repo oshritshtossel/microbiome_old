@@ -1,4 +1,4 @@
-from LearningMethods.textreeCreate import create_tax_tree
+from LearningMethods.taxtreeCreate import create_tax_tree
 import networkx as nx
 import pickle
 #import pygraphviz
