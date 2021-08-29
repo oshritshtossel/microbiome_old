@@ -13,16 +13,17 @@ class CreateOtuAndMappingFiles(object):
         self.otu_path = otu_file_path
         self.tags_path = tags_file_path
         print('read tag file...')
-        mapping_table = pd.read_csv(self.tags_path)
-        self.extra_features_df = mapping_table.drop(['Tag'], axis=1).copy()
-        self.tags_df = mapping_table[['ID', 'Tag']].copy()
-        # set index as ID
-        self.tags_df = self.tags_df.set_index('ID')
-        self.tags_df.index = self.tags_df.index.astype(str)
-        self.extra_features_df = self.extra_features_df.set_index('ID')
-        # subset of ids according to the tags data frame
-        self.ids = self.tags_df.index.tolist()
-        self.ids.append('taxonomy')
+        if tags_file_path:
+            mapping_table = pd.read_csv(self.tags_path)
+            self.extra_features_df = mapping_table.drop(['Tag'], axis=1).copy()
+            self.tags_df = mapping_table[['ID', 'Tag']].copy()
+            # set index as ID
+            self.tags_df = self.tags_df.set_index('ID')
+            self.tags_df.index = self.tags_df.index.astype(str)
+            self.extra_features_df = self.extra_features_df.set_index('ID')
+            # subset of ids according to the tags data frame
+            self.ids = self.tags_df.index.tolist()
+            self.ids.append('taxonomy')
         print('read otu file...')
         self.otu_features_df = pd.read_csv(self.otu_path).drop('Unnamed: 0', axis=1, errors='ignore')
         self.otu_features_df = self.otu_features_df.set_index('ID')
