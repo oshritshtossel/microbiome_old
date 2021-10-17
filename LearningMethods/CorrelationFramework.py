@@ -1,9 +1,13 @@
+import re
 import pandas as pd
 from LearningMethods.correlation_evaluation import SignificantCorrelation
 import Plot.plot_positive_negative_bars as PP
 import Plot.plot_real_and_shuffled_hist as PPR
 from matplotlib.pyplot import Axes
 import matplotlib.pyplot as plt
+
+from New_taxtree_draw import draw_tree
+from taxtreeCreate import create_tax_tree
 
 
 class CorrelationFramework:
@@ -12,24 +16,63 @@ class CorrelationFramework:
         self.y = y.copy()
 
         self.sc = SignificantCorrelation(self.x, self.y, **kwargs)
-        self.plot = _CorrelationPlotter(self.sc)
+        self.correlation_tree = self.sc.get_real_correlations()
+        self.plot = _CorrelationPlotter(self.sc, self.correlation_tree)
 
 
 class _CorrelationPlotter:
-    def __init__(self, significant_correlation):
+    def __init__(self, significant_correlation, correlation_tree):
         self.significant_correlation = significant_correlation
+        self.correlation_tree = correlation_tree
+
 
     def plot_positive_negative_bars(self, ax: Axes, percentile, last_taxonomic_levels_to_keep=2, **kwargs):
         significant_bacteria = self.significant_correlation.get_most_significant_coefficients(percentile=percentile)
         if last_taxonomic_levels_to_keep is not None:
+            significant_bacteria.index = [delete_empty_taxonomic_levels(str(i))
+                for i in significant_bacteria.index]
+            significant_bacteria.index = [delete_suffix(str(i))
+                                          for i in significant_bacteria.index]
             significant_bacteria.index = [str([h[4:].strip("_").capitalize() for h in i.split(";")][-2:])
-                    .replace("[", "").replace("]", "").replace("\'", "") for i in significant_bacteria.index]
+                                                  .replace("[", "").replace("]", "").replace("\'", "") for i in
+                                              significant_bacteria.index]
+
+
         return PP.plot_positive_negative_bars(ax, significant_bacteria, **kwargs)
+
+    def clean_correlation_framework(self):
+        self.correlation_tree = self.correlation_tree[self.correlation_tree.index.str.fullmatch(r'^(([^;]+);)+[^;]+$')]
+
+    def plot_graph(self,  ax: Axes, threshold=0.0, dict={}):
+        if not dict:
+            dict = {"netural": "yellow", "positive": "green", "negative": "red", "treshold": 1.0}
+        self.clean_correlation_framework()
+        return draw_tree(ax, self.correlation_tree, dict)
+
 
     def plot_real_and_shuffled_hist(self, ax: Axes, **kwargs):
         return PPR.plot_real_and_shuffled_hist(ax, self.significant_correlation.coeff_df['real'],
                                                self.significant_correlation.coeff_df.drop('real',
-                                                            axis=1).values.flatten(), **kwargs)
+                                                                                          axis=1).values.flatten(),
+                                               **kwargs)
+
+def delete_empty_taxonomic_levels(i):
+    splited = i.split(';')
+    while splited[len(splited) - 1][-2:] == "__":
+        splited = splited[:-1]
+    i = ""
+    for j in splited:
+        i += j
+        i += ';'
+    i = i[:-1]
+    return i
+
+def delete_suffix(i):
+    m = re.search(r'_+\d+$', i)
+    if m is not None:
+        i = i[:-(m.end()-m.start())]
+    return i
+
 
 def use_corr_framwork(X: pd.DataFrame, y, title=None, folder="plots"):
     cf = CorrelationFramework(X, y)
