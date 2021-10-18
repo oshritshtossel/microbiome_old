@@ -1,17 +1,19 @@
 from LearningMethods.CorrelationFramework import CorrelationFramework
 import matplotlib.pyplot as plt
 import pandas as pd
+import sys
+import json
 
 #send as a parameter a dictionary with treshold, positive(color as string), negative(color as string), real(color as a char), random(color as a char)
 def use_corr_framwork(X: pd.DataFrame, y, dict={},title=None, folder=""):
     cf = CorrelationFramework(X, y)
 
     fig1 = plt.figure(figsize=(24, 18))
-    plt.subplots_adjust(top=0.94,bottom=0.07,left=0.2,right=1.0,hspace=0.2,wspace=0.2)
+    plt.subplots_adjust(top=0.94, bottom=0.07, left=0.2, right=1.0, hspace=0.2, wspace=0.2)
     grid = plt.GridSpec(4, 8, wspace=0, hspace=1)
     ax1 = plt.subplot(grid[0:2, 1:3])
     ax2 = plt.subplot(grid[2:5, 0:3])
-    ax3 = plt.subplot(grid[:5 ,3:10])
+    ax3 = plt.subplot(grid[:5, 3:10])
 
     positive_dict = {'height': 0.8}
     negative_dict = {'height': 0.8}

@@ -29,6 +29,7 @@ class _CorrelationPlotter:
     def plot_positive_negative_bars(self, ax: Axes, percentile, last_taxonomic_levels_to_keep=2, **kwargs):
         significant_bacteria = self.significant_correlation.get_most_significant_coefficients(percentile=percentile)
         if last_taxonomic_levels_to_keep is not None:
+            print(significant_bacteria.index)
             significant_bacteria.index = [delete_empty_taxonomic_levels(str(i))
                 for i in significant_bacteria.index]
             significant_bacteria.index = [delete_suffix(str(i))
@@ -36,6 +37,7 @@ class _CorrelationPlotter:
             significant_bacteria.index = [str([h[4:].strip("_").capitalize() for h in i.split(";")][-2:])
                                                   .replace("[", "").replace("]", "").replace("\'", "") for i in
                                               significant_bacteria.index]
+
 
 
         return PP.plot_positive_negative_bars(ax, significant_bacteria, **kwargs)
@@ -58,7 +60,7 @@ class _CorrelationPlotter:
 
 def delete_empty_taxonomic_levels(i):
     splited = i.split(';')
-    while splited[len(splited) - 1][-2:] == "__":
+    while re.search(r'[a-z]_+\d*$', splited[-1]) is not None:
         splited = splited[:-1]
     i = ""
     for j in splited:
