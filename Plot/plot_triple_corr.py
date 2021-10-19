@@ -4,7 +4,7 @@ import pandas as pd
 import sys
 import json
 
-#send as a parameter a dictionary with treshold, positive(color as string), negative(color as string), real(color as a char), random(color as a char)
+#send as a parameter a dictionary with treshold, positive(color as string), negative(color as string), netural(color as a string), real(color as a char), random(color as a char)
 def use_corr_framwork(X: pd.DataFrame, y, dict={},title=None, folder=""):
     cf = CorrelationFramework(X, y)
 
