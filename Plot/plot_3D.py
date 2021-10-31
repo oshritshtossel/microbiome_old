@@ -6,6 +6,7 @@ import os
 import numpy as np
 from scipy import stats
 import pandas as pd
+import umap
 
 
 def plot_data_3d(X_3d: pd.DataFrame, color: pd.Series, color_dict=None, labels_dict: dict = None, size=10):
@@ -102,16 +103,27 @@ def PCA_t_test(group_1, group_2, title="t_test", save=False, folder=None):
 
     return result
 
-def PCoA_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, label=pd.Series(range(256)), **kwargs):
+def PCoA_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, **kwargs):
     mds = MDS(n_components=n_comp, dissimilarity="precomputed", **kwargs)
     pos = mds.fit(dist).embedding_
     if n_comp == 3:
-        fig, ax = plot_data_3d(pd.DataFrame(pos), label)
+        fig, ax = plot_data_3d(pd.DataFrame(pos), pd.Series(range(256)))
         ax.set_title(title)
         plt.savefig(f"{folder}/{title}.png")
     else:
         print("No visualization for dims other then three.")
     return pos
+    
+def UMAP_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, **kwargs):
+    reducer = umap.UMAP(n_components=3)
+    embedding = reducer.fit_transform(dist)
+    if n_comp == 3:
+        fig, ax = plot_data_3d(pd.DataFrame(embedding), pd.Series(range(256)))
+        ax.set_title(title)
+        plt.savefig(f"static/umap.png")
+    else:
+        print("No visualization for dims other then three.")
+    return embedding
 
 
 if __name__ == "__main__":
