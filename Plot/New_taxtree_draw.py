@@ -6,7 +6,6 @@ import svgutils.compose as sc
 from IPython.display import SVG # /!\ note the 'SVG' function also in svgutils.compose
 import numpy as np
 import matplotlib.pyplot as plt
-from LearningMethods import CorrelationFramework
 def name_to_newick(tup):
     return str(tup).replace(", ", "|").replace("(", "<") \
         .replace(")", ">").replace("'", "").replace(",", "")
@@ -64,7 +63,7 @@ def get_tree_shape(newick, graph, lower_threshold, higher_threshold, dict):
                 parent = n.up
                 if parent == n.get_tree_root():
                     n.delete()
-                while not parent.is_root():
+                while not parent.parent.is_root():
                     if parent in not_yellows:
                         flag = 0
                         break
@@ -94,7 +93,7 @@ def draw_tree(ax: plt.Axes ,series, dict):
         return None
     for n in t.traverse():
         n.name = ";".join(n.name.strip("<>").split("|")[-2:]).replace("[","").replace("]","")
-        n.name = CorrelationFramework.delete_suffix(str(n.name))
+        n.name = delete_suffix(str(n.name))
 
     t.render("phylotree.svg", tree_style=ts)
     t.render("phylotree.png", tree_style=ts)
@@ -102,3 +101,9 @@ def draw_tree(ax: plt.Axes ,series, dict):
     im = ax.imshow(tree)
     plt.show()
     t.show(tree_style=ts)
+
+def delete_suffix(i):
+    m = re.search(r'_+\d+$', i)
+    if m is not None:
+        i = i[:-(m.end()-m.start())]
+    return i

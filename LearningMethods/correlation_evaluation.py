@@ -30,11 +30,11 @@ class SignificantCorrelation:
 
     def get_most_significant_coefficients(self, percentile):
 
-        fake_coeff = self.coeff_df.drop(self.real_col_name,axis = 1).values.flatten()
+        fake_coeff = self.coeff_df.drop(self.real_col_name, axis=1).values.flatten()
         real_coeff = self.coeff_df[self.real_col_name]
 
-        upper_bound = np.percentile(fake_coeff, 100 - percentile)
-        lower_bound = np.percentile(fake_coeff, percentile)
+        upper_bound = np.nanpercentile(fake_coeff, 100 - percentile)
+        lower_bound = np.nanpercentile(fake_coeff, percentile)
         real_upper_significant_coefficients = real_coeff[real_coeff >= upper_bound]
         real_lower_significant_coefficients = real_coeff[real_coeff <= lower_bound]
 
