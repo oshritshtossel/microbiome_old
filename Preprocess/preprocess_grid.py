@@ -29,14 +29,12 @@ def update_state(ip, position):
 def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
     taxonomy_level = int(dict_params['taxonomy_level'])
     preform_taxnomy_group = dict_params['taxnomy_group']
-    tax_level_plot = dict_params["tax_level_plot"]
     eps_for_zeros = float(dict_params['epsilon'])
     preform_norm = dict_params['normalization']
     preform_z_scoring = dict_params['z_scoring']
     relative_z = dict_params['norm_after_rel']
     correlation_removal_threshold = dict_params.get('correlation_threshold', None)
     rare_bacteria_threshold = dict_params.get('rare_bacteria_threshold', None)
-    var_th_delete = float(dict_params['std_to_delete'])
     pca = dict_params['pca']
     folder = ip + "/static"
 

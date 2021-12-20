@@ -2,11 +2,11 @@ import sys, os
 from create_otu_and_mapping_files import CreateOtuAndMappingFiles
 from  diversity import Diversity
 import service
-preprocess_prms = {'taxonomy_level': 6, 'taxnomy_group': 'mean', 'epsilon': 0.1, 'tax_level_plot': 4,
-                     'normalization': 'log', 'z_scoring': 'row', 'norm_after_rel': 'No',
-                     'std_to_delete': 0, 'pca': (0, 'PCA')}
+preprocess_prms = {'taxonomy_level': 7, 'taxnomy_group': 'sub PCA', 'epsilon': 1,
+                         'normalization': 'log', 'z_scoring': 'No', 'norm_after_rel': 'No',
+                         'std_to_delete': 0, 'pca': (0, 'PCA'), "rare_bacteria_threshold":-1}
 
-otu_file = 'General_files/IBD_otus_for_preprocess.csv'
+otu_file = 'General_files/bw_for_preprocess.csv'
 tag_file = 'General_files/tag_IBD_VS_ALL.csv'
 task_name = 'General_task'
 
@@ -25,7 +25,7 @@ task_name = 'General_task'
 #     if not flag:
 #         print(l)
 
-mapping_file = CreateOtuAndMappingFiles(otu_file, tag_file)
+mapping_file = CreateOtuAndMappingFiles(otu_file, tags_file_path=None)
 mapping_file.preprocess(preprocess_params=preprocess_prms, visualize=True, ip='127.0.0.1')
 service.diversity("shannon", "unwieghted_unifrac", "127.0.0.1")
 

@@ -24,6 +24,8 @@ def distance_learning(perform_distance, level, preproccessed_data, mapping_file)
             col_name = col.split(';')
             # col_name = preproccessed_data[col].name.split(';')
             bact_level = level - 1
+            if col_name[0][-1] == '_':
+                continue
             if len(col_name) > bact_level:
                 while col_name[bact_level][-1] == "_":
                     bact_level-=1
