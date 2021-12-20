@@ -1,24 +1,39 @@
 from sklearn.decomposition import PCA
 import pandas as pd
-from Preprocess.general import apply_pca
+from general import apply_pca
 
 
 ## distance learning
 def distance_learning(perform_distance, level, preproccessed_data, mapping_file):
     if perform_distance:
-        cols = [col for col in preproccessed_data.columns if preproccessed_data[col].nunique() != 1]
+        unique_cols = []
+        for c in range(preproccessed_data.shape[1]):
+            m =  preproccessed_data.iloc[:,c].nunique()
+            if preproccessed_data.iloc[:,c].nunique() == 1:
+                unique_cols.append(preproccessed_data.columns[c])
+        unique_cols_df = preproccessed_data[unique_cols]
+#       unique_cols = [col for col in preproccessed_data.columns if preproccessed_data[col].nunique() == 1]
+        cols = []
+        for c in range(preproccessed_data.shape[1]):
+            m = preproccessed_data.iloc[:, c].nunique()
+            if preproccessed_data.iloc[:, c].nunique() != 1:
+                cols.append(preproccessed_data.columns[c])
+        # cols = [col for col in preproccessed_data.columns if preproccessed_data[col].nunique() != 1]
         dict_bact = {'else': []}
         for col in preproccessed_data[cols]:
-            col_name = preproccessed_data[col].name.split(';')
+            col_name = col.split(';')
+            # col_name = preproccessed_data[col].name.split(';')
             bact_level = level - 1
             if len(col_name) > bact_level:
-                if col_name[bact_level] in dict_bact:
-                    dict_bact[col_name[bact_level]].append(preproccessed_data[col].name)
+                while col_name[bact_level][-1] == "_":
+                    bact_level-=1
+                if ';'.join(col_name[:bact_level+1]) in dict_bact:
+                    dict_bact[';'.join(col_name[:bact_level+1])].append(col)
                 else:
-                    dict_bact[col_name[bact_level]] = [preproccessed_data[col].name]
+                    dict_bact[';'.join(col_name[:bact_level+1])] = [col]
             else:
                 dict_bact['else'].append(preproccessed_data[col].name)
-            #print(dict_bact)
+
 
         new_df = pd.DataFrame(index=preproccessed_data.index)
         col = 0
@@ -47,6 +62,8 @@ def distance_learning(perform_distance, level, preproccessed_data, mapping_file)
                     else:
                         new_df[str(values[0][0:values[0].find(key)+len(key)])+'_'+str(j)] = otu_after_pca_new[j]
                 col += num_comp
+        dfs = [new_df, unique_cols_df]
+        new_df = pd.concat(dfs, axis=1)
         return new_df, mapping_file
     else:
         return preproccessed_data, mapping_file

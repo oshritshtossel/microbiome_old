@@ -35,7 +35,7 @@ class _CorrelationPlotter:
             # significant_bacteria.index = [str([h[4:].strip("_").capitalize() for h in i.split(";")][-2:])
             #                                   .replace("[", "").replace("]", "").replace("\'", "") for i in
             #                               significant_bacteria.index]
-            significant_bacteria.index = [str(','.join(str(i).split(';')[-last_taxonomic_levels_to_keep:])).replace(",", ", ")
+            significant_bacteria.index = [str(','.join(str(i).split(';')[-last_taxonomic_levels_to_keep:])).replace(",", ", ").replace("[", "").replace("]", "")
                                           for i in significant_bacteria.index]
             significant_bacteria.index = [ re.sub(r'\w_+', '', str(i))
                 for i in significant_bacteria.index]
@@ -43,11 +43,17 @@ class _CorrelationPlotter:
         return PP.plot_positive_negative_bars(ax, significant_bacteria, **kwargs)
 
     def clean_correlation_framework(self):
-        self.correlation_tree = self.correlation_tree[self.correlation_tree.index.str.fullmatch(r'^(([^;]+);)+[^;]+$')]
+        self.correlation_tree = self.correlation_tree[self.correlation_tree.index.str.match(r'^(([^;]+);)+[^;]+$')]
 
     def plot_graph(self, ax: Axes, threshold=0.0, dict={}):
         if not dict:
             dict = {"netural": "yellow", "positive": "green", "negative": "red", "treshold": 1.0}
+        if "netural" not in dict:
+            dict["netural"] =  "yellow"
+        if "positive" not in dict:
+            dict["positive"] = "green"
+        if "negative" not in dict:
+            dict["negative"] = "red"
         self.clean_correlation_framework()
         return draw_tree(ax, self.correlation_tree, dict)
 

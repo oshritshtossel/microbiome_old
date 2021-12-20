@@ -5,7 +5,9 @@ from ete3 import Tree, NodeStyle, TreeStyle
 import svgutils.compose as sc
 from IPython.display import SVG # /!\ note the 'SVG' function also in svgutils.compose
 import numpy as np
+import re
 import matplotlib.pyplot as plt
+
 def name_to_newick(tup):
     return str(tup).replace(", ", "|").replace("(", "<") \
         .replace(")", ">").replace("'", "").replace(",", "")
@@ -63,7 +65,14 @@ def get_tree_shape(newick, graph, lower_threshold, higher_threshold, dict):
                 parent = n.up
                 if parent == n.get_tree_root():
                     n.delete()
-                while not parent.parent.is_root():
+                    continue
+                if parent.up == n.get_tree_root():
+                    n.delete()
+                    continue
+                if parent.up.up == n.get_tree_root():
+                    n.delete()
+                    continue
+                while not parent.up.up.is_root():
                     if parent in not_yellows:
                         flag = 0
                         break
@@ -92,6 +101,8 @@ def draw_tree(ax: plt.Axes ,series, dict):
         print("not enough bacterias to create a tree")
         return None
     for n in t.traverse():
+        while re.match(r'_+\d',n.name.split("|")[-1]):
+            n.name = "<" + '|'.join(n.name.split('|')[:-1])+">"
         n.name = ";".join(n.name.strip("<>").split("|")[-2:]).replace("[","").replace("]","")
         n.name = delete_suffix(str(n.name))
 

@@ -12,10 +12,21 @@ from sklearn.decomposition import PCA
 from sklearn.decomposition import FastICA
 
 from LearningMethods.CorrelationFramework import use_corr_framwork
-from Plot.plot_relative_frequency import plot_rel_freq
+from Plot import plot_relative_frequency
+from  visualize import visualize
+taxonomy_col = 'taxonomy'
 
+states = {1: "Creating otu And Mapping Files",
+          2:"Perform taxonomy grouping",
+3:'Perform normalization',
+4:'dimension reduction',
+5:"plotting diversities"}
 
-def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
+def update_state(ip, position):
+    with open("./" + str(ip) + "/state.txt", "w+") as f:
+        f.write(str(position) + "\n" + states[position])
+
+def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
     taxonomy_level = int(dict_params['taxonomy_level'])
     preform_taxnomy_group = dict_params['taxnomy_group']
     tax_level_plot = dict_params["tax_level_plot"]
@@ -27,63 +38,33 @@ def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
     rare_bacteria_threshold = dict_params.get('rare_bacteria_threshold', None)
     var_th_delete = float(dict_params['std_to_delete'])
     pca = dict_params['pca']
+    folder = ip + "/static"
 
-    taxonomy_col = 'taxonomy'
 
     as_data_frame = pd.DataFrame(data.T).apply(pd.to_numeric, errors='ignore').copy()  # data frame of OTUs
-
+    as_data_frame = as_data_frame.fillna(0)
     # fill all taxonomy level with default values
     as_data_frame = fill_taxonomy(as_data_frame, tax_col=taxonomy_col)
 
-    if visualize_data:  # prepare folder for visualization
-        folder = "static"
-        if not os.path.exists(folder):
-            os.mkdir(folder)
-        plt.figure('Preprocess')  # make preprocessing figure
-        data_frame_for_vis = as_data_frame.copy()
-        try:
-            data_frame_for_vis = data_frame_for_vis.drop(taxonomy_col, axis=1)
-        except:
-            pass
-        data_frame_flatten = data_frame_for_vis.values.flatten()
-        indexes_of_non_zeros = data_frame_flatten != 0
-        visualize_preproccess(data_frame_for_vis, indexes_of_non_zeros, 'Before Taxonomy group', [321, 322])
+    if not os.path.exists(folder):
+        os.mkdir(folder)
 
-        data_frame_for_vis = as_data_frame.copy()
+    if visualize_data:  # prepare folder for visualization
+        visualizaton = visualize(as_data_frame, folder=folder)
+
+    # updating state - Performing taxonomy grouping
+    update_state(ip, 2)
 
     if preform_taxnomy_group != '':
         print('Perform taxonomy grouping...')
-        # union taxonomy level by group level
-        # spliting the taxonomy level column
+        as_data_frame = taxonomy_grouping(as_data_frame, preform_taxnomy_group, taxonomy_level)
 
-        taxonomy_reduced = as_data_frame[taxonomy_col].map(lambda x: x.split(';'))
-        if preform_taxnomy_group == 'sub PCA':
-            taxonomy_reduced = taxonomy_reduced.map(lambda x: ';'.join(x[:]))
-        else:
-            taxonomy_reduced = taxonomy_reduced.map(lambda x: ';'.join(x[:taxonomy_level]))
-        as_data_frame[taxonomy_col] = taxonomy_reduced
-        # group by mean
-        if preform_taxnomy_group == 'mean':
-            print('mean')
-            as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
-        # group by sum
-        elif preform_taxnomy_group == 'sum':
-            print('sum')
-            as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).sum()
-            # group by anna PCA
-        elif preform_taxnomy_group == 'sub PCA':
-            print('PCA')
-            as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
-            # as_data_frame = as_data_frame.T
-            # as_data_frame.columns = as_data_frame.iloc[[-1]].values[0]
-            # as_data_frame, _ = distance_learning(perform_distance=True, level=taxnomy_level, preproccessed_data=as_data_frame.iloc[:-1], mapping_file=map_file).T
-            # as_data_frame_b_pca = as_data_frame
-
-        as_data_frame = as_data_frame.T
         # here the samples are columns
+        as_data_frame = as_data_frame.T
     else:
         try:
             as_data_frame = as_data_frame.drop(taxonomy_col, axis=1).T
+            # here the samples are columns
         except:
             pass
 
@@ -92,37 +73,21 @@ def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
         as_data_frame = dropHighCorr(as_data_frame, correlation_removal_threshold)
 
     if visualize_data:
-        data_frame_flatten = as_data_frame.values.flatten()
-        indexes_of_non_zeros = data_frame_flatten != 0
-        visualize_preproccess(as_data_frame, indexes_of_non_zeros, 'After-Taxonomy - Before', [323, 324])
-        samples_density = as_data_frame.apply(np.sum, axis=1)
-        plt.figure('Density of samples')
-        samples_density.hist(bins=100, facecolor='Blue')
-        plt.title(f'Density of samples')
-        plt.savefig(os.path.join(folder, "density_of_samples.svg"), bbox_inches='tight', format='svg')
-        plt.clf()
+        visualizaton.plot_after_taxonomy_grouping(as_data_frame)
 
     # drop bacterias with single values
     if rare_bacteria_threshold is not None:
         as_data_frame = drop_rare_bacteria(as_data_frame, rare_bacteria_threshold)
 
+    update_state(ip, 3)
     if preform_norm == 'log':
         print('Perform log normalization...')
         as_data_frame = log_normalization(as_data_frame, eps_for_zeros)
 
-        # delete column with var give
-        # as_data_frame = drop_low_var(as_data_frame.T, var_th_delete)
 
         if visualize_data:
             # plot histogrm of variance
-            samples_variance = as_data_frame.apply(np.var, axis=1)
-            plt.figure('Variance of samples')
-            samples_variance.hist(bins=100, facecolor='Blue')
-            plt.title(
-                f'Histogram of samples variance before z-scoring\nmean={samples_variance.values.mean()},'
-                f' std={samples_variance.values.std()}')
-            plt.savefig(os.path.join(folder, "samples_variance.svg"), bbox_inches='tight', format='svg')
-            plt.clf()
+            visualizaton.plot_var_histogram(as_data_frame)
 
         if preform_z_scoring != 'No':
             as_data_frame = z_score(as_data_frame, preform_z_scoring)
@@ -136,59 +101,28 @@ def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
 
     if visualize_data:
         plt.clf()
-        plot_rel_freq(data_frame_for_vis, taxonomy_col, tax_level_plot, "static")
-
-
-    if visualize_data:
-        data_frame_flatten = as_data_frame.values.flatten()
-        indexes_of_non_zeros = data_frame_flatten != 0
-        plt.figure('Preprocess')
-        visualize_preproccess(as_data_frame, indexes_of_non_zeros, 'After-Taxonomy - After', [325, 326])
-        plt.subplots_adjust(hspace=0.5, wspace=0.5)
-        plt.savefig(os.path.join(folder, "preprocess.svg"), bbox_inches='tight', format='svg')
-        plt.clf()
+        plot_relative_frequency.plot_rel_freq(visualizaton.data_frame_for_vis, taxonomy_col, tax_level=4, folder=str(ip)+"/static")
 
     if visualize_data:
-        plt.figure('standard heatmap')
-        sns.heatmap(as_data_frame, cmap="Blues", xticklabels=False, yticklabels=False)
-        plt.title('Heatmap after standardization and taxonomy group level ' + str(taxonomy_level))
-        plt.savefig(os.path.join(folder, "standard_heatmap.png"))
-        plt.clf()
-        corr_method = 'pearson'
-        corr_name = 'Pearson'
-        # if samples on both axis needed, specify the vmin, vmax and mathod
-        plt.figure('correlation heatmap patient')
-        sns.heatmap(as_data_frame.T.corr(method=corr_method), cmap='Blues', vmin=-1, vmax=1, xticklabels=False,
-                    yticklabels=False)
-        plt.title(corr_name + ' correlation patient with taxonomy level ' + str(taxonomy_level))
-        # plt.savefig(os.path.join(folder, "correlation_heatmap_patient.svg"), bbox_inches='tight', format='svg')
-        plt.savefig(os.path.join(folder, "correlation_heatmap_patient.png"))
-        plt.clf()
-
-        plt.figure('correlation heatmap bacteria')
-        sns.heatmap(as_data_frame.corr(method=corr_method), cmap='Blues', vmin=-1, vmax=1, xticklabels=False,
-                    yticklabels=False)
-        plt.title(corr_name + ' correlation bacteria with taxonomy level ' + str(taxonomy_level))
-        # plt.savefig(os.path.join(folder, "correlation_heatmap_bacteria.svg"), bbox_inches='tight', format='svg')
-        plt.savefig(os.path.join(folder, "correlation_heatmap_bacteria.png"))
-        # plt.show()
-        plt.clf()
-        plt.close()
+        #plotting heatmaps
+        visualizaton.plot_heatmaps(as_data_frame, taxonomy_level)
 
     as_data_frame_b_pca = as_data_frame.copy()
     bacteria = as_data_frame.columns
-
     if preform_taxnomy_group == 'sub PCA':
+        # as_data_frame.columns = taxo_col
         as_data_frame, _ = distance_learning(perform_distance=True, level=taxonomy_level,
                                              preproccessed_data=as_data_frame, mapping_file=map_file)
         as_data_frame_b_pca = as_data_frame
 
-    if visualize_data and map_file is not None:
+    if map_file is not None:
         #draw_component_rhos_calculation_figure(as_data_frame, map_file, save_folder=folder)
         map_file = pd.to_numeric(map_file.squeeze(), errors='coerce').fillna(0)
-        use_corr_framwork(as_data_frame, map_file,
+        use_corr_framwork(fill_taxonomy(as_data_frame, tax_col='columns'), map_file,
                           title="Correlation_between_each_component_and_the_label_prognosis_task", folder=folder)
 
+    # updating state - performing pca
+    update_state(ip, 4)
     if pca[0] != 0:
         print('perform ' + pca[1] + ' ...')
         as_data_frame, pca_obj, pca = apply_pca(as_data_frame, n_components=pca[0], dim_red_type=pca[1])
@@ -196,25 +130,6 @@ def preprocess_data(data, dict_params: dict, map_file, visualize_data=False):
         pca_obj = None
 
     return as_data_frame, as_data_frame_b_pca, pca_obj, bacteria, pca
-
-
-def visualize_preproccess(as_data_frame, indexes_of_non_zeros, name, subplot_idx):
-    plt.subplot(subplot_idx[0])
-    data_frame_flatten = as_data_frame.values.flatten()
-    plot_preprocess_stage(data_frame_flatten, name)
-    result = data_frame_flatten[indexes_of_non_zeros]
-    plt.subplot(subplot_idx[1])
-    plot_preprocess_stage(result, name + ' without zeros')
-    plt.clf()
-
-
-def plot_preprocess_stage(result, name, write_title=False, write_axis=True):
-    plt.hist(result, 1000, facecolor='Blue', alpha=0.75)
-    if write_title:
-        plt.title('Distribution ' + name + ' preprocess')
-    if write_axis:
-        plt.xlabel('BINS')
-        plt.ylabel('Count')
 
 
 def row_normalization(as_data_frame):
@@ -228,6 +143,7 @@ def drop_low_var(as_data_frame, threshold):
 
 
 def log_normalization(as_data_frame, eps_for_zeros):
+    as_data_frame = as_data_frame.astype(float)
     as_data_frame += eps_for_zeros
     as_data_frame = np.log10(as_data_frame)
     return as_data_frame
@@ -337,7 +253,6 @@ def apply_pca(data, n_components=15, dim_red_type='PCA', visualize=False):
             plt.xticks(list(range(0, components)), list(range(1, components + 1)))
 
             plt.ylabel('Explained Variance')
-            plt.show()
     else:
         pca = FastICA(n_components=components)
         data_components = pca.fit_transform(data)
@@ -345,19 +260,35 @@ def apply_pca(data, n_components=15, dim_red_type='PCA', visualize=False):
 
 
 def fill_taxonomy(as_data_frame, tax_col):
-    df_tax = as_data_frame[tax_col].str.split(';', expand=True)
-    df_tax[6] = df_tax[6].fillna('s__')
-    df_tax[5] = df_tax[5].fillna('g__')
-    df_tax[4] = df_tax[4].fillna('f__')
-    df_tax[3] = df_tax[3].fillna('o__')
-    df_tax[2] = df_tax[2].fillna('c__')
-    df_tax[1] = df_tax[1].fillna('p__')
-    df_tax[0] = df_tax[0].fillna('s__')
-
-    as_data_frame[tax_col] = df_tax[0] + ';' + df_tax[1] + ';' + df_tax[2] + ';' + df_tax[3] + ';' + df_tax[4] + ';' + \
-                             df_tax[5] + ';' + df_tax[6]
-
+    if tax_col == 'columns':
+        df_tax = pd.Series(as_data_frame.columns).str.split(';', expand=True)
+        i = df_tax.shape[1]
+        while i < 7:
+            df_tax[i] = np.nan
+            i+=1
+    else:
+        df_tax = as_data_frame[tax_col].str.split(';', expand=True)
+        if df_tax.shape[1] == 1:
+            # We need to use a differant separator
+            df_tax = as_data_frame[tax_col].str.split('|', expand=True)
+    df_tax[6] = df_tax[6].fillna(' s__')
+    df_tax[5] = df_tax[5].fillna(' g__')
+    df_tax[4] = df_tax[4].fillna(' f__')
+    df_tax[3] = df_tax[3].fillna(' o__')
+    df_tax[2] = df_tax[2].fillna(' c__')
+    df_tax[1] = df_tax[1].fillna(' p__')
+    df_tax[0] = df_tax[0].fillna(' s__')
+    if tax_col == 'columns':
+        as_data_frame.columns = df_tax[0] + ';' + df_tax[1] + ';' + df_tax[2
+        ] + ';' + df_tax[3] + ';' + df_tax[4] + ';' + df_tax[5] + ';' + df_tax[
+                                     6]
+    else:
+        as_data_frame[tax_col] = df_tax[0] + ';' + df_tax[1] + ';' + df_tax[2
+        ] + ';' + df_tax[3] + ';' + df_tax[4] + ';' + df_tax[5] + ';' + df_tax[
+                                 6]
     return as_data_frame
+
+
 
 
 def from_biom(biom_file_path, taxonomy_file_path, otu_dest_path, **kwargs):
@@ -372,3 +303,26 @@ def from_biom(biom_file_path, taxonomy_file_path, otu_dest_path, **kwargs):
     otu_table = otu_table.transpose()
     otu_table.index.name = 'ID'
     otu_table.to_csv(otu_dest_path)
+
+def taxonomy_grouping(as_data_frame, preform_taxnomy_group, taxonomy_level):
+    taxonomy_reduced = as_data_frame[taxonomy_col].map(lambda x: x.split(';'))
+    if preform_taxnomy_group == 'sub PCA':
+        taxonomy_reduced = taxonomy_reduced.map(lambda x: ';'.join(x[:]))
+    else:
+        taxonomy_reduced = taxonomy_reduced.map(lambda x: ';'.join(x[:taxonomy_level]))
+    as_data_frame[taxonomy_col] = taxonomy_reduced
+    # group by mean
+    if preform_taxnomy_group == 'mean':
+        print('mean')
+        as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
+    # group by sum
+    elif preform_taxnomy_group == 'sum':
+        print('sum')
+        as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).sum()
+        # group by anna PCA
+    elif preform_taxnomy_group == 'sub PCA':
+        print('PCA')
+        taxo_col = as_data_frame['taxonomy']
+        # as_data_frame = as_data_frame.iloc[:,:-1]
+        as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
+    return as_data_frame
