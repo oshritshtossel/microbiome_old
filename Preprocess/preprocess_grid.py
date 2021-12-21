@@ -15,6 +15,7 @@ from LearningMethods.CorrelationFramework import use_corr_framwork
 from Plot import plot_relative_frequency
 from  visualize import visualize
 taxonomy_col = 'taxonomy'
+min_letter_value = 'a'
 
 states = {1: "Creating otu And Mapping Files",
           2:"Perform taxonomy grouping",
@@ -41,8 +42,28 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
 
     as_data_frame = pd.DataFrame(data.T).apply(pd.to_numeric, errors='ignore').copy()  # data frame of OTUs
     as_data_frame = as_data_frame.fillna(0)
-    # fill all taxonomy level with default values
+
+    #handling edge cases - droping viruese, unclastered bacterias, bacterias which are clustered with more than specie and unnamed bacterias
+    indexes = as_data_frame[taxonomy_col]
+    stay = []
+    for i in range(len(indexes)):
+        if str(as_data_frame[taxonomy_col][i])[0] > min_letter_value and as_data_frame[taxonomy_col][i].split(';')[0][-len("Viruses"):] != "Viruses":
+            length = len(as_data_frame[taxonomy_col][i].split(';'))
+            if length<8 and not ("." not in as_data_frame[taxonomy_col][i].split(';')[length-1] and as_data_frame[taxonomy_col][i].split(';')[length-1][-1]!="_" and as_data_frame[taxonomy_col][i].split(';')[length-2][-1]=="_"):
+                stay.append(i)
+
+    as_data_frame = as_data_frame.iloc[stay,:]
+
+    # filling empty taxonomy levels
     as_data_frame = fill_taxonomy(as_data_frame, tax_col=taxonomy_col)
+
+    # droping space from the taxonomy name
+    indexes = as_data_frame[taxonomy_col]
+    new_indexes = []
+    for i in range(len(indexes)):
+        new_indexes.append(as_data_frame[taxonomy_col][i].replace(" ",""))
+    as_data_frame[taxonomy_col] = new_indexes
+
 
     if not os.path.exists(folder):
         os.mkdir(folder)
@@ -269,13 +290,13 @@ def fill_taxonomy(as_data_frame, tax_col):
         if df_tax.shape[1] == 1:
             # We need to use a differant separator
             df_tax = as_data_frame[tax_col].str.split('|', expand=True)
-    df_tax[6] = df_tax[6].fillna(' s__')
-    df_tax[5] = df_tax[5].fillna(' g__')
-    df_tax[4] = df_tax[4].fillna(' f__')
-    df_tax[3] = df_tax[3].fillna(' o__')
-    df_tax[2] = df_tax[2].fillna(' c__')
-    df_tax[1] = df_tax[1].fillna(' p__')
-    df_tax[0] = df_tax[0].fillna(' s__')
+    df_tax[6] = df_tax[6].fillna('s__')
+    df_tax[5] = df_tax[5].fillna('g__')
+    df_tax[4] = df_tax[4].fillna('f__')
+    df_tax[3] = df_tax[3].fillna('o__')
+    df_tax[2] = df_tax[2].fillna('c__')
+    df_tax[1] = df_tax[1].fillna('p__')
+    df_tax[0] = df_tax[0].fillna('s__')
     if tax_col == 'columns':
         as_data_frame.columns = df_tax[0] + ';' + df_tax[1] + ';' + df_tax[2
         ] + ';' + df_tax[3] + ';' + df_tax[4] + ';' + df_tax[5] + ';' + df_tax[
