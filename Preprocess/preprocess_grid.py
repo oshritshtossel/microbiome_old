@@ -1,5 +1,7 @@
 # created by Yoel Jasner
 import os
+import re
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -133,6 +135,7 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
         as_data_frame, _ = distance_learning(perform_distance=True, level=taxonomy_level,
                                              preproccessed_data=as_data_frame, mapping_file=map_file)
         as_data_frame_b_pca = as_data_frame
+    as_data_frame.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame.columns]
 
     if map_file is not None:
         #draw_component_rhos_calculation_figure(as_data_frame, map_file, save_folder=folder)
@@ -345,3 +348,14 @@ def taxonomy_grouping(as_data_frame, preform_taxnomy_group, taxonomy_level):
         # as_data_frame = as_data_frame.iloc[:,:-1]
         as_data_frame = as_data_frame.groupby(as_data_frame[taxonomy_col]).mean()
     return as_data_frame
+
+def delete_empty_taxonomic_levels(i):
+    splited = i.split(';')
+    while re.search(r'^[a-z]_+\d*$', splited[-1]) is not None:
+        splited = splited[:-1]
+    i = ""
+    for j in splited:
+        i += j
+        i += ';'
+    i = i[:-1]
+    return i
