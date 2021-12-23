@@ -51,7 +51,7 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
     for i in range(len(indexes)):
         if str(as_data_frame[taxonomy_col][i])[0] > min_letter_value and as_data_frame[taxonomy_col][i].split(';')[0][-len("Viruses"):] != "Viruses":
             length = len(as_data_frame[taxonomy_col][i].split(';'))
-            if length<8 and not ("." not in as_data_frame[taxonomy_col][i].split(';')[length-1] and as_data_frame[taxonomy_col][i].split(';')[length-1][-1]!="_" and as_data_frame[taxonomy_col][i].split(';')[length-2][-1]=="_"):
+            if length<8 and not ("." not in as_data_frame[taxonomy_col][i].split(';')[length-1] and as_data_frame[taxonomy_col][i].split(';')[length-1][-1]!="_" and check_cluster(as_data_frame[taxonomy_col][i].split(';'))):
                 stay.append(i)
 
     as_data_frame = as_data_frame.iloc[stay,:]
@@ -361,3 +361,12 @@ def delete_empty_taxonomic_levels(i):
         i += ';'
     i = i[:-1]
     return i
+
+def check_cluster(tax):
+    length = len(tax)
+    length = length- 2
+    while length >= 0:
+        if tax[length][-1] == '_':
+            return True
+        length-=1
+    return False
