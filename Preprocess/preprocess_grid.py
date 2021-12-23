@@ -136,6 +136,8 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
                                              preproccessed_data=as_data_frame, mapping_file=map_file)
         as_data_frame_b_pca = as_data_frame
     as_data_frame.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame.columns]
+    as_data_frame_b_pca.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame_b_pca.columns]
+
 
     if map_file is not None:
         #draw_component_rhos_calculation_figure(as_data_frame, map_file, save_folder=folder)
