@@ -4,9 +4,9 @@ import os
 import numpy as np
 # sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
-from preprocess_grid import preprocess_data
-from plot_rho import draw_X_y_rhos_calculation_figure
-from plot_3D import PCA_t_test, plot_data_3d, plot_data_2d
+from Preprocess.preprocess_grid import preprocess_data
+from Plot.old.plot_rho import draw_X_y_rhos_calculation_figure
+from Plot.plot_3D import PCA_t_test, plot_data_3d, plot_data_2d
 
 
 class CreateOtuAndMappingFiles(object):

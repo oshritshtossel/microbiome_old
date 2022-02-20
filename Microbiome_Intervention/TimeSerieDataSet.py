@@ -18,7 +18,6 @@ from Microbiome_Intervention.Simple_prediction_of_natural_dynamics import create
     predict_interaction_network_structure_using_change_in_data_auc_calc_trail
 from Microbiome_Intervention.single_bacteria_nni_runner import run_single_bacteria
 
-
 class TimeSerieDataLoader:
     def __init__(self, title, taxnomy_level):
         self._data_set_folder = title

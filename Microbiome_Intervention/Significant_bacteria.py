@@ -3,8 +3,6 @@ import pickle
 from random import shuffle
 import pandas as pd
 import numpy as np
-
-from LearningMethods import shorten_single_bact_name
 from Plot.plot_bacteria_intraction_network import plot_bacteria_intraction_network
 
 

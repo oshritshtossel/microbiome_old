@@ -25,7 +25,6 @@ CHANGE = 0.5
 
 
 class SequenceModuleClf(nn.Module):
-
     def __init__(self, params, timesteps=10):
         """
         Create model structure replica in order to load the trained model weights and bias from file

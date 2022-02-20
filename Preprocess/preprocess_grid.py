@@ -15,7 +15,7 @@ from sklearn.decomposition import FastICA
 
 from LearningMethods.CorrelationFramework import use_corr_framwork
 from Plot import plot_relative_frequency
-from  visualize import visualize
+from  Preprocess.visualize import visualize
 taxonomy_col = 'taxonomy'
 min_letter_value = 'a'
 

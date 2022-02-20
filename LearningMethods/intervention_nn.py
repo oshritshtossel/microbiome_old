@@ -6,16 +6,12 @@ import pandas as pd
 import numpy as np
 import nni
 import torch
-from bokeh.models import Title
 from matplotlib.pyplot import figure
 from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 from torch import nn
 from torch.nn import Module, Linear, Conv1d
 from torch.nn.functional import mse_loss, relu, sigmoid, leaky_relu
-
-from bokeh.io import output_file, save, export_png
-from bokeh.plotting import figure, show
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from LearningMethods.model_params import NNModuleParams, NNActivatorParams, MicrobiomeDataset, split_microbiome_dataset

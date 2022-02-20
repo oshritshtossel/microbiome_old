@@ -9,7 +9,7 @@ from scipy.stats import mannwhitneyu
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, balanced_accuracy_score
 
-from Plot import plot_roc_auc, multi_class_roc_auc
+from Plot.old.plot_auc import plot_roc_auc, multi_class_roc_auc
 from Plot.plot_bacteria_intraction_network import plot_bacteria_intraction_network
 
 

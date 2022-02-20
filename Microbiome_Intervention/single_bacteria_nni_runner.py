@@ -171,7 +171,7 @@ def run_single_bacteria(tax, bacteria_sorted_by_mse, best_bacteria_path, X_y_fil
 
 
 if __name__ == "__main__":  # create an option for nni - get params from file
-    tax = os.path.join('GDM_data', 'tax=5')
+    tax = os.path.join('../Datasets/GDM', 'OTU_merged_General_task.csv')
     bacteria_sorted_by_mse = "bacteria_sorted_by_mse.csv"
     best_bacteria_path = "run_all_types_of_regression_10_fold_test_size_0.5_bacteria_conclusions.csv"
     X_y_files_list_path = 'multi_bacteria_time_serie_files_names.txt'
