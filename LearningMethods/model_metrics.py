@@ -5,16 +5,17 @@ from sklearn.metrics import r2_score
 import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error as mse
+from torch import  nn
+from sklearn.metrics import accuracy_score
 
-
-def single_bacteria_custom_corr_for_missing_values(input, target, missing_values):
-    valid_input = [float(val) for i, val in enumerate(input) if missing_values[i]]
-    valid_target = [float(val) for i, val in enumerate(target) if missing_values[i]]
+def single_bacteria_custom_corr_for_missing_values(input, target):
+    valid_input = [float(val) for i, val in enumerate(torch.squeeze(torch.tensor(input),0)) ]
+    valid_target = [float(val) for i, val in enumerate(torch.squeeze(torch.tensor(target),0))]
     corr, p_value = spearmanr(valid_input, valid_target)
     return corr
 
 
-def custom_rmse_for_missing_values(input, target, missing_values):
+def custom_rmse_for_missing_values(input, target):
 
     """
     #print(target)
@@ -42,14 +43,11 @@ def custom_rmse_for_missing_values(input, target, missing_values):
     print(e.shape)
     print("--------------------------------------------------------------")
     """
-    loss = torch.mean(torch.pow(torch.mul(torch.sub(target, input), missing_values.float()), 2))
-    # print(mse(target.detach().numpy(), input.detach().numpy()))
-    # print(torch.mean(torch.pow(torch.sub(target, input), 2)))
-    # print(loss)
+    loss = torch.mean(torch.pow(torch.sub(target, input), 2))
     return loss
 
 
-def nn_custom_r2_for_missing_values(input, target, missing_values):
+def nn_custom_r2_for_missing_values(input, target):
     # loss = r2_score(target, input)
     # print(target.shape)
     # print(input.shape)
@@ -77,26 +75,16 @@ def nn_custom_r2_for_missing_values(input, target, missing_values):
         return r2
 
 
-def multi_bacteria_custom_corr_for_missing_values(input, target, missing_values):
+def multi_bacteria_custom_corr_for_missing_values(input, target):
     # average of the correlation at each time point:
-    target_by_times = [[] for i in range(target.shape[1])]
-    input_by_times = [[] for i in range(input.shape[1])]
+    target_by_times = [[] for i in range(len(target[0]))]
+    input_by_times = [[] for i in range(len(target[0]))]
     corr_by_time = []
-    for s_i, (tar_sample, inp_sample, mis_sample) in enumerate(zip(target, input, missing_values)):
-        for t_i, (tar_time_point, inp_time_point, mis_time_point) in enumerate(zip(tar_sample, inp_sample, mis_sample)):
-            try:
-                if mis_time_point == torch.tensor(1):
-                    target_by_times[t_i].append(tar_time_point.detach().numpy())
-                    input_by_times[t_i].append(inp_time_point.detach().numpy())
-            except:
-                if mis_time_point[0] == torch.tensor(1):
-                    target_by_times[t_i].append(tar_time_point.detach().numpy())
-                    input_by_times[t_i].append(inp_time_point.detach().numpy())
-            """
-            if mis_time_point[t_i] == 1:  # torch.tensor(1):
-                target_by_times[t_i].append(tar_time_point)
-                input_by_times[t_i].append(inp_time_point)
-            """
+    for s_i, (tar_sample, inp_sample) in enumerate(zip(target, input)):
+        for t_i, (tar_time_point, inp_time_point) in enumerate(zip(tar_sample, inp_sample)):
+            target_by_times[t_i].append(tar_time_point.detach().numpy())
+            input_by_times[t_i].append(inp_time_point.detach().numpy())
+
     target_by_times = np.array(target_by_times)
     input_by_times = np.array(input_by_times)
     for tar_time_t, inp_time_t in zip(target_by_times, input_by_times):
@@ -107,8 +95,48 @@ def multi_bacteria_custom_corr_for_missing_values(input, target, missing_values)
 
     # print(corr_by_time)
     # print(np.mean(corr_by_time))
-    return np.mean(corr_by_time)
+    return np.nanmean(corr_by_time)
 
+def single_bacteria_lstm_corr(input, target):
+    flatten_input = []
+    flatten_target = []
+    for item in input:
+        flatten_input += item
+    for item in target:
+        flatten_target += item
+    return spearmanr(flatten_input, flatten_target)[0]
+def multi_bacteria_lstm_corr(input, target):
+    # average of the correlation at each time point:
+    target_by_times = [[] for i in range(len(target))]
+    input_by_times = [[] for i in range(len(target))]
+    corr_by_time = []
+    for s_i, (tar_sample, inp_sample) in enumerate(zip(target, input)):
+        for t_i, (tar_time_point, inp_time_point) in enumerate(zip(tar_sample, inp_sample)):
+            target_by_times[t_i].append(tar_time_point)
+            input_by_times[t_i].append(inp_time_point)
+
+    target_by_times = np.array(target_by_times)
+    input_by_times = np.array(input_by_times)
+    for bact_i in range(len(target_by_times[0][0])):
+        valid_input = []
+        valid_target = []
+        for tar_time_t, inp_time_t in zip(target_by_times, input_by_times):
+            if len(tar_time_t) >0:
+                valid_input += [float(val) for i, val in enumerate(np.array(inp_time_t)[:,bact_i].reshape(-1).flatten())]
+                valid_target += [float(val) for i, val in enumerate(np.array(tar_time_t)[:,bact_i].reshape(-1).flatten())]
+        corr, p_value = spearmanr(valid_input, valid_target)
+        corr_by_time.append(corr)
+
+    # print(corr_by_time)
+    # print(np.mean(corr_by_time))
+    return np.nanmean(corr_by_time)
+
+def cross_entropy(input, target):
+    loss = nn.CrossEntropyLoss()
+    return loss(input, target)
+
+def top_1_accuracy(preds, labels):
+    return accuracy_score(labels, preds)
 
 if __name__ == "__main__":
     B = 16

@@ -15,7 +15,7 @@ from sklearn.decomposition import FastICA
 
 from LearningMethods.CorrelationFramework import use_corr_framwork
 from Plot import plot_relative_frequency
-from  Preprocess.visualize import visualize
+from  visualize import visualize
 taxonomy_col = 'taxonomy'
 min_letter_value = 'a'
 
@@ -49,7 +49,7 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
     indexes = as_data_frame[taxonomy_col]
     stay = []
     for i in range(len(indexes)):
-        if str(as_data_frame[taxonomy_col][i])[0] > min_letter_value and as_data_frame[taxonomy_col][i].split(';')[0][-len("Viruses"):] != "Viruses":
+        if str(as_data_frame[taxonomy_col][i])[0].lower() > min_letter_value and as_data_frame[taxonomy_col][i].split(';')[0][-len("Viruses"):] != "Viruses":
             length = len(as_data_frame[taxonomy_col][i].split(';'))
             if length<8 and not ("." not in as_data_frame[taxonomy_col][i].split(';')[length-1] and as_data_frame[taxonomy_col][i].split(';')[length-1][-1]!="_" and check_cluster(as_data_frame[taxonomy_col][i].split(';'))):
                 stay.append(i)
@@ -136,7 +136,7 @@ def preprocess_data(data, dict_params: dict, map_file,ip, visualize_data=False):
                                              preproccessed_data=as_data_frame, mapping_file=map_file)
         as_data_frame_b_pca = as_data_frame
     as_data_frame.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame.columns]
-    as_data_frame_b_pca.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame_b_pca.columns]
+    #as_data_frame_b_pca.columns = [delete_empty_taxonomic_levels(i) for i in as_data_frame_b_pca.columns]
 
 
     if map_file is not None:

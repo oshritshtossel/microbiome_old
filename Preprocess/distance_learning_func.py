@@ -1,6 +1,6 @@
 from sklearn.decomposition import PCA
 import pandas as pd
-from Preprocess.general import apply_pca
+from general import apply_pca
 
 
 ## distance learning

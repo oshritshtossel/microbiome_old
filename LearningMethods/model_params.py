@@ -1,15 +1,18 @@
 from torch.optim import Adam, SGD, Adagrad
 from torch.utils.data import Dataset
 from random import shuffle
-
-
+import  numpy as np
+import pandas as pd
 from LearningMethods.model_metrics import custom_rmse_for_missing_values, nn_custom_r2_for_missing_values, \
-    single_bacteria_custom_corr_for_missing_values, multi_bacteria_custom_corr_for_missing_values
+    single_bacteria_custom_corr_for_missing_values, multi_bacteria_custom_corr_for_missing_values, single_bacteria_lstm_corr, multi_bacteria_lstm_corr, cross_entropy,top_1_accuracy
 
 name_of_function_to_function_map = {"custom_rmse_for_missing_values": custom_rmse_for_missing_values,
                                     "nn_custom_r2_for_missing_values": nn_custom_r2_for_missing_values,
                                     "single_bacteria_custom_corr_for_missing_values": single_bacteria_custom_corr_for_missing_values,
-                                    "multi_bacteria_custom_corr_for_missing_values": multi_bacteria_custom_corr_for_missing_values}
+                                    "multi_bacteria_custom_corr_for_missing_values": multi_bacteria_custom_corr_for_missing_values,
+                                    'single_bacteria_lstm_corr':single_bacteria_lstm_corr,
+                                    'multi_bacteria_lstm_corr': multi_bacteria_lstm_corr,
+                                    'CE': cross_entropy,'top_1_accuracy': top_1_accuracy}
 
 optimizer_name_to_function_map = {"Adam": Adam, "SGD": SGD, "Adagrad": Adagrad}
 
@@ -73,7 +76,7 @@ class RNNActivatorParams:
 
 class RNNModuleParams:
     def __init__(self, NUMBER_OF_BACTERIA, lstm_hidden_dim, mlp_out_dim, LSTM_LAYER_NUM=1, DROPOUT=0, LEARNING_RATE=1e-3,
-                 OPTIMIZER="Adam", REGULARIZATION=1e-4, DIM=1, SHUFFLE=False):
+                 OPTIMIZER="Adam", REGULARIZATION=1e-4, DIM=1, SHUFFLE=False, TASK='reg'):
         self.SEQUENCE_PARAMS = RNNSequenceParams(LSTM_input_dim=NUMBER_OF_BACTERIA, LSTM_hidden_dim=lstm_hidden_dim,
                                                  LSTM_LAYER_NUM=LSTM_LAYER_NUM, DROPOUT=DROPOUT)
         self.LINEAR_PARAMS = MLPParams(in_dim=lstm_hidden_dim, out_dim=mlp_out_dim)
@@ -82,6 +85,7 @@ class RNNModuleParams:
         self.REGULARIZATION = REGULARIZATION
         self.DIM = DIM
         self.SHUFFLE = SHUFFLE
+        self.TASK = TASK
 
 
 class RNNSequenceParams:
@@ -99,13 +103,18 @@ class MLPParams:
 
 # ----------------------------------------------- data sets -----------------------------------------------
 class MicrobiomeDataset(Dataset):
-    def __init__(self, X, y, missing_values):
+    def __init__(self, X, y):
         self._X = X
         self._y = y
-        self._missing_values = missing_values
 
     def __getitem__(self, index):
-        return self._X[index], self._y[index], self._missing_values[index]
+        if type(self._X) == np.ndarray:
+            if type(self._y) == pd.DataFrame:
+                return self._X[index, :], self._y.iloc[index,:]
+            return self._X[index, :], self._y[index]
+        if type(self._y) == pd.DataFrame:
+            return self._X.iloc[index, :], self._y.iloc[index,:]
+        return self._X.iloc[index,:], self._y.iat[index]
 
     def __len__(self):
         return len(self._X)
@@ -134,18 +143,16 @@ def split_microbiome_dataset(dataset: MicrobiomeDataset, split_list, person_inde
     new_data_missing_values = [[] for _ in range(len(split_list))]
     for sub_data_idx, (start, end) in enumerate(zip([0] + split_list[:-1], split_list)):
         for i in range(start, end):
-            X, y, missing_values = dataset.__getitem__(shuffled_idx[i])
+            X, y = dataset.__getitem__(shuffled_idx[i])
             new_data_X[sub_data_idx].append(np.array(X))
             new_data_y[sub_data_idx].append(np.array(y))
-            new_data_missing_values[sub_data_idx].append(np.array(missing_values))
     # create sub sets
     # new_data_X = np.array(new_data_X)
     # new_data_y = np.array(new_data_y)
     sub_datasets = []
     for i in range(len(new_data_X)):
         sub_datasets.append(MicrobiomeDataset(np.array(new_data_X[i]),
-                                              np.array(new_data_y[i]),
-                                              np.array(new_data_missing_values[i])))
+                                              np.array(new_data_y[i])))
     return sub_datasets
 
 

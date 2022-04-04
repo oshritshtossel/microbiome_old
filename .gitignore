@@ -99,3 +99,9 @@ GVHD_BAR/meirav code/mucositis/mucositis/General_Code/Entropy Functions/Entropy_
 GVHD_BAR/meirav code/
 *.tmp
 *.npy
+LearningMethods/preprocess_plots/
+LearningMethods/Regression/d.pickle
+LearningMethods/Regression/svr.pickle
+LearningMethods/Regression/e.pickle
+LearningMethods/others_for_time_prediction
+Microbiome_Intervention/new_microbiome_intervention/results/

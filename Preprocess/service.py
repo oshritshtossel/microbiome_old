@@ -27,7 +27,10 @@ def evaluate(params, tag_flag, ip, only_tag):
 
     # updating the state - calculating diversities
     update_state(ip, 5)
-    diversity(params["alpha_div"], params["beta_div"], ip)
+    try:
+        diversity(params["alpha_div"], params["beta_div"], ip)
+    except:
+        print("error occured while calculating the diversities")
 
     if not tag_flag:
         otu_path, mapping_path, pca_path = mapping_file.csv_to_learn("General_task", os.path.join(os.getcwd(),
@@ -49,5 +52,4 @@ def diversity(alpha, beta, ip):
     diversity.plot_beta(beta, folder=str(ip) +"/static/").to_csv(ip +"/General_files/beta_div.csv")
     diversity.compute_alpha(alpha).to_csv(ip +"/General_files/alpha_div.csv")
     diversity.compute_beta(beta).to_csv(ip +"/General_files/beta_div.csv")
-
 

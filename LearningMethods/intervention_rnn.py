@@ -16,7 +16,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from LearningMethods.model_params import MLPParams, RNNActivatorParams, RNNModuleParams, MicrobiomeDataset, \
     split_microbiome_dataset
-
+import  math
+from  sklearn import utils
 TRAIN_JOB = "TRAIN"
 DEV_JOB = "DEV"
 VALIDATE_JOB = "VALIDATE"
@@ -29,7 +30,7 @@ CALC_R2 = False
 CALC_ACC = False
 AUC_PLOT = "ROC-AUC"
 CONV_LAYER = False
-SHUFFLE = False
+SHUFFLE = True
 DIM = 2
 
 NUMBER_OF_BACTERIA = 0
@@ -47,8 +48,12 @@ class MicrobiomeModule(Module):
         super(MicrobiomeModule, self).__init__()
         # useful info in forward function
         self.params = params
+        self.task = params.TASK
         self._sequence_lstm = SequenceModule(params.SEQUENCE_PARAMS)
-        self._mlp = MLPModule(params.LINEAR_PARAMS)
+        if self.task == 'reg':
+            self._mlp = MLPModule(params.LINEAR_PARAMS)
+        elif self.task == 'class':
+            self._mlp = MLPModuleClass(params.LINEAR_PARAMS)
         self.optimizer = self.set_optimizer(params.LEARNING_RATE, params.OPTIMIZER, params.REGULARIZATION)
 
     def set_optimizer(self, lr, opt, l2_reg):
@@ -70,7 +75,7 @@ class SequenceModule(Module):
     def __init__(self, params):
         super(SequenceModule, self).__init__()
         self._lstm = LSTM(input_size=params.LSTM_input_dim, hidden_size=params.LSTM_hidden_dim, num_layers=params.LSTM_layers, batch_first=True,
-                          bidirectional=False, dropout=params.LSTM_dropout)
+                          bidirectional=True, dropout=params.LSTM_dropout)
 
     def forward(self, x):
         # 3 layers LSTM
@@ -90,11 +95,20 @@ class MLPModule(Module):
     def __init__(self, params: MLPParams):
         super(MLPModule, self).__init__()
         # useful info in forward function
-        self._linear = Linear(params.LINEAR_in_dim, params.LINEAR_out_dim)
+        self._linear = Linear(params.LINEAR_in_dim * 2, params.LINEAR_out_dim)
 
     def forward(self, x):
         x = self._linear(x)
         return x
+class MLPModuleClass(Module):
+    def __init__(self, params: MLPParams):
+        super(MLPModule, self).__init__()
+        # useful info in forward function
+        self._linear = Linear(params.LINEAR_in_dim * 2, params.LINEAR_out_dim)
+
+    def forward(self, x):
+        x = self._linear(x)
+        return torch.sigmoid(x)
 
 
 # ----------------------------------------------- activate model -----------------------------------------------
@@ -109,7 +123,7 @@ class Activator:
         self._r2_func = params.R2
         self._early_stop = params.EARLY_STOP
         self.shuffle = model.params.SHUFFLE
-        self._load_data(data, params.TRAIN_TEST_SPLIT, params.BATCH_SIZE, splitter)
+        # self._load_data(data, params.TRAIN_TEST_SPLIT, params.BATCH_SIZE, splitter)
         self._init_loss_and_acc_vec()
         self._init_print_att()
         self._dim = model.params.DIM
@@ -241,37 +255,46 @@ class Activator:
 
     # plot loss / accuracy graph
     def plot_line(self, title, save_name, job=LOSS_PLOT):
-        t1, t2 = title.split("\n")
-        p = figure(plot_width=600, plot_height=250,  # , title=title
-                   x_axis_label="epochs", y_axis_label=job)
-        p.add_layout(Title(text=t2), 'above')
-        p.add_layout(Title(text=t1), 'above')
-
-        color1, color2 = ("orange", "red") if job == LOSS_PLOT else ("green", "blue")
 
         if job == LOSS_PLOT:
             y_axis_train = self._loss_vec_train  # if job == LOSS_PLOT else self._accuracy_vec_train
             y_axis_dev = self._loss_vec_dev  # if job == LOSS_PLOT else self._accuracy_vec_dev
+            c1 = "red"
+            c2 = "blue"
         elif job == CORR_PLOT:
             y_axis_train = self._corr_vec_train
             y_axis_dev = self._corr_vec_dev
+            c1 = "c"
+            c2 = "m"
         elif job == R2_PLOT:
             y_axis_train = self._r2_vec_train
             y_axis_dev = self._r2_vec_dev
+            c1 = "green"
+            c2 = "orange"
+
         elif job == ACCURACY_PLOT:
             y_axis_train = self._accuracy_vec_train
             y_axis_dev = self._accuracy_vec_dev
+            c1 = "brown"
+            c2 = "pink"
+
         elif job == AUC_PLOT:
             y_axis_train = self._auc_vec_train
             y_axis_dev = self._auc_vec_dev
+            c1 = "gray"
+            c2 = "olive"
 
-        x_axis = list(range(len(y_axis_dev)))
-        p.line(x_axis, y_axis_train, line_color=color1, legend_label="train")
-        p.line(x_axis, y_axis_dev, line_color=color2, legend_label="dev")
-        output_file(save_name + " " + job + "_fig.html")
-        save(p)
-        # show(p)
-
+        fig, ax = plt.subplots()
+        plt.title(title)
+        y = np.linspace(0, len(y_axis_train), len(y_axis_train))
+        plt.plot(y, y_axis_train, label="train", color=c1)
+        plt.plot(y, y_axis_dev, label="test", color=c2)
+        plt.xlabel("epochs")
+        plt.xticks(np.arange(50, len(y_axis_train) + 1, step=50))
+        plt.ylabel(job)
+        plt.legend()
+        plt.savefig(save_name + " " + job + ".png")
+        # plt.show()
     def _plot_acc_dev(self):
         self.plot_line(title="loss", save_name="plot", job=LOSS_PLOT)
         self.plot_line(title="R2", save_name="plot", job=R2_PLOT)
@@ -334,66 +357,48 @@ class Activator:
             batch_size=batch_size,
             # collate_fn=train.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
         )
 
         self._train_valid_loader = DataLoader(
             train,
-            batch_size=100,
+            batch_size=1000,
             # collate_fn=train.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
         )
 
         # set validation loader
         self._dev_loader = DataLoader(
             dev,
-            batch_size=100,
+            batch_size=1000,
             # collate_fn=dev.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
         )
 
-    def _to_gpu(self, x, l, m):
+    def _to_gpu(self, x, l):
         x = x.cuda() if self._gpu else x
         l = l.cuda() if self._gpu else l
-        m = m.cuda() if self._gpu else m
-        return x, l, m
+        return x, l
 
     # train a model, input is the enum of the model type
-    def train(self, show_plot=False, apply_nni=False, validate_rate=10):
+    def train(self, x_train, y_train, x_test, y_test, show_plot=False, apply_nni=False, validate_rate=10):
         self._init_loss_and_acc_vec()
         # calc number of iteration in current epoch
-        len_data = len(self._train_loader)
+        # len_data = len(self._train_loader)
         last_epoch = list(range(self._epochs))[-1]
         for epoch_num in range(self._epochs):
             # calc number of iteration in current epoch
-            for batch_index, (sequence, label, missing_values) in enumerate(self._train_loader):
-                sequence, label, missing_values = self._to_gpu(sequence, label, missing_values)
+            x_train, y_train = utils.shuffle(x_train, y_train, random_state=0)
+            for (sequence, label) in zip(x_train, y_train):
+                sequence, label = self._to_gpu(sequence, label)
                 # print progress
                 self._model.train()
                 output = self._model(sequence)                  # calc output of current model on the current batch
-                """
-                print("label:")
-                print(label.shape)
-                print("seq:")
-                print(sequence.shape)
-                print("output:")
-                print(output.shape)
-                print(output.squeeze(dim=2).shape)
-                print(label.float().squeeze(dim=1).shape)
-                """
-                loss = self._loss_func(output.squeeze(dim=self._dim), label.float(), missing_values)  # calculate loss
+
+                loss = self._loss_func(output.squeeze(dim=self._dim), label.float())  # calculate loss
                 # print(loss)
                 loss.backward()                                 # back propagation
                 self._model.optimizer.step()                    # update weights
-                self._model.zero_grad()                         # zero gradients
-
-                if PRINT_PROGRESS:
-                    self._print_progress(batch_index, len_data, job=TRAIN_JOB)
+                self._model.optimizer.zero_grad()                         # zero gradients
 
                 self._train_label_and_output = (label, output)
             # validate and print progress
@@ -402,7 +407,7 @@ class Activator:
             if epoch_num % validate_rate == 0:
                 # validate on dev set anyway
                 save_true_and_pred = True
-                self._validate(self._dev_loader, save_true_and_pred, job=DEV_JOB)
+                self._validate(x_test, y_test, save_true_and_pred, job=DEV_JOB)
                 torch.cuda.empty_cache()
                 # report dev result as am intermediate result
                 if apply_nni:
@@ -411,10 +416,10 @@ class Activator:
                 # validate on train set as well and display results
                 else:
                     torch.cuda.empty_cache()
-                    self._validate(self._train_valid_loader, save_true_and_pred, job=TRAIN_JOB)
+                    self._validate(x_train, y_train, save_true_and_pred, job=TRAIN_JOB)
                     self._print_info(jobs=[TRAIN_JOB, DEV_JOB])
 
-            if self._early_stop and epoch_num > 30 and self._print_dev_loss > np.max(self._loss_vec_dev[-30:]):
+            if self._early_stop and epoch_num > 30 and self._print_dev_loss > np.max(self._loss_vec_dev[-10:]):
                 break
 
         # report final results
@@ -425,7 +430,7 @@ class Activator:
         if show_plot:
             self._plot_acc_dev()
     # validation function only the model and the data are important for input, the others are just for print
-    def _validate(self, data_loader, save_true_and_pred, job=""):
+    def _validate(self,x_test, y_test, save_true_and_pred, job=""):
         # for calculating total loss and accuracy
         loss_count = 0
         corr_count = 0
@@ -435,36 +440,42 @@ class Activator:
 
         self._model.eval()
         # calc number of iteration in current epoch
-        len_data = len(data_loader)
-        for batch_index, (sequence, label, missing_values) in enumerate(data_loader):
-            sequence, label, missing_values = self._to_gpu(sequence, label, missing_values)
-            # print progress
-            if PRINT_PROGRESS:
-                self._print_progress(batch_index, len_data, job=VALIDATE_JOB)
-            output = self._model(sequence)
-            # calculate total loss
-            loss_count += self._loss_func(output.squeeze(dim=2), label.float(), missing_values)  # calculate loss
-            if CALC_CORR:
-                corr_count += self._corr_func(output.squeeze(dim=2).float(), label.float(), missing_values)  # calculate loss
-            if CALC_R2:
-                r2_count += self._r2_func(output.squeeze(dim=2).float(), label.float(), missing_values)  # calculate r^2
+        # len_data = len(data_loader)
+        len_data = 0
+        len_data_corr = 0
+        for (full_sequence, full_label) in zip(x_test, y_test):
+            for (sequence, label) in zip(full_sequence, full_label):
+                sequence = torch.unsqueeze(sequence,0)
+                len_data += 1
+                sequence, label = self._to_gpu(sequence, label)
 
-            true_labels += label.tolist()
-            pred += output.squeeze().tolist()
+                output = self._model(sequence)
+                # calculate total loss
+                loss_count += self._loss_func(output.squeeze(dim=2), label.float())   # calculate loss
+                # if CALC_CORR:
+                #     c = self._corr_func(output.squeeze(dim=2).float(), label.float()) * len(label) if not math.isnan(self._corr_func(output.squeeze(dim=2).float(), label.float())) else 0
+                #     if c != 0:
+                #         len_data_corr += len(label)
+                #         corr_count += c
+                # if CALC_R2:
+                #     r2_count += self._r2_func(output.squeeze(dim=2).float(), label.float()) * len(label)  # calculate r^2
 
-            if save_true_and_pred:
-                self._test_label_and_output = (label, output)
+                true_labels.append(label.tolist())
+                pred.append(output.squeeze().tolist())
+
+                if save_true_and_pred:
+                    self._test_label_and_output = (label, output)
 
         # update loss accuracy
-        loss = float(loss_count / len(data_loader))
+        loss = float(loss_count / len_data)
         self._update_loss(loss, job=job)
 
         if CALC_CORR:
-            corr = float(corr_count / len(data_loader))
+            corr = self._corr_func(pred, true_labels)
             self._update_corr(corr, job=job)
 
         if CALC_R2:
-            r2 = float(r2_count / len(data_loader))
+            r2 = float(r2_count / len_data)
             self._update_r2(r2, job=job)
 
         """
@@ -543,20 +554,33 @@ class Activator:
                 # plt.show()
 
 # ----------------------------------------------- run model -----------------------------------------------
-def run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag, task_id):
-    out_dim = 1 if len(y.shape) == 2 else NUMBER_OF_BACTERIA
+def run_rnn_experiment(X, Y, missing_values, params, folder, GPU_flag, task_id,unique):
+    x_train = X[0]
+    x_test = X[1]
+    y_train = Y[0]
+    y_test = Y[1]
+    NUMBER_OF_BACTERIA = x_train[0].shape[-1]
+    if task_id == 'reg':
+        out_dim = 1 if len(y_train[0].shape) == 2 else  y_train[0].shape[-1]
+    if task_id == 'class':
+        out_dim = unique
     dim = 2
-    CORR_FUNC = "single_bacteria_custom_corr_for_missing_values" if len(y.shape) == 1 else "multi_bacteria_custom_corr_for_missing_values"
-    k = 5
-    EARLY_STOP = 0
-    LOSS = "custom_rmse_for_missing_values"
-    BATCH_SIZE = NUMBER_OF_SAMPLES
+    if task_id == 'reg':
+        CORR_FUNC = "single_bacteria_lstm_corr" if len(y_train[0].shape) == 2 else "multi_bacteria_lstm_corr"
+    if task_id == 'class':
+        CORR_FUNC = 'top_1_accuracy'
+    EARLY_STOP = 1
+    if task_id == 'reg':
+        LOSS = "custom_rmse_for_missing_values"
+    if task_id == 'class':
+        LOSS = "CE"
+    BATCH_SIZE = 16
     structure = params["STRUCTURE"]
     layer_num = int(structure[0:3])
     hid_dim = int(structure[4:7])
     params_str = params.__str__().replace(" ", "").replace("'", "") + "_" + task_id
 
-    microbiome_dataset = MicrobiomeDataset(X, y, missing_values)
+    # microbiome_dataset = MicrobiomeDataset(X, Y)
     activator_params = RNNActivatorParams(TRAIN_TEST_SPLIT=params["TRAIN_TEST_SPLIT"],
                                           LOSS=LOSS,
                                           CORR=CORR_FUNC,
@@ -572,10 +596,10 @@ def run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag, task_id):
                                                            LEARNING_RATE=params["LEARNING_RATE"],
                                                            OPTIMIZER=params["OPTIMIZER"],
                                                            REGULARIZATION=params["REGULARIZATION"],
-                                                           DIM=dim, SHUFFLE=SHUFFLE)),
-                          activator_params, microbiome_dataset, split_microbiome_dataset)
+                                                           DIM=dim, SHUFFLE=SHUFFLE, TASK=task_id)),
+                          activator_params, None, split_microbiome_dataset)
 
-    activator.train(validate_rate=1)
+    activator.train(x_train, y_train, x_test, y_test,validate_rate=1)
 
     print(params_str)
     results_sub_folder = os.path.join(folder, "RNN_RESULTS")
@@ -602,20 +626,21 @@ def run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag, task_id):
     title += "\nLEARNING_RATE: " + str(params["LEARNING_RATE"]) + " OPTIMIZER: " + str(params["OPTIMIZER"]) +\
              " REGULARIZATION: " + str(params["REGULARIZATION"]) + " DROPOUT: " + str(params["DROPOUT"])
 
-
     activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=LOSS_PLOT)
+    activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=CORR_PLOT)
     dev_avg_loss = np.mean(activator.loss_dev_vec[-10:])
     train_avg_loss = np.mean(activator.loss_train_vec[-10:])
 
     dev_avg_corr = None
     train_avg_corr = None
     if CALC_CORR:
-        activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=CORR_PLOT)
+        # activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=CORR_PLOT)
         dev_avg_corr = np.mean(activator.corr_dev_vec[-10:])
         train_avg_corr = np.mean(activator.corr_train_vec[-10:])
-
-    activator.scatter_results("Scatter Plot of RNN Results - " + task_id,
-                              os.path.join(results_sub_folder, params_str + "_Scatter_Plot.png"))
+    print(f'train_corr {train_avg_corr}')
+    print(f'dev_corr {dev_avg_corr}')
+    # activator.scatter_results("Scatter Plot of RNN Results - " + task_id,
+    #                           os.path.join(results_sub_folder, params_str + "_Scatter_Plot.png"))
     result_map = {"TRAIN": {"loss": train_avg_loss,
                             "corr": train_avg_corr},
                   "TEST": {"loss": dev_avg_loss,
@@ -626,25 +651,9 @@ def run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag, task_id):
     return result_map
 
 
-def run_RNN(X, y, missing_values, name, folder, params, number_of_samples, number_of_time_points, number_of_bacteria, GPU_flag, task_id):
+def run_RNN(X, y, missing_values, name, folder, params, number_of_samples, number_of_time_points, number_of_bacteria, GPU_flag, task_id, unique=5):
     print(name)
     global NUMBER_OF_SAMPLES
     global NUMBER_OF_TIME_POINTS
     global NUMBER_OF_BACTERIA
-    NUMBER_OF_SAMPLES = number_of_samples
-    NUMBER_OF_TIME_POINTS = number_of_time_points
-    NUMBER_OF_BACTERIA = number_of_bacteria
-
-    """
-    params = {"RNN_STRUCTURE": "002L030H",
-              "TRAIN_TEST_SPLIT": 0.7,
-              "LOSS": "custom_rmse_for_missing_values",
-              "EPOCHS": 100,
-              "LEARNING_RATE": 0.01,
-              "OPTIMIZER": "Adam",
-              "REGULARIZATION": 0,
-              "DROPOUT": 0,
-              "EARLY_STOP": 0}
-    """
-
-    return run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag=GPU_flag, task_id=task_id)
+    return run_rnn_experiment(X, y, missing_values, params, folder, GPU_flag=GPU_flag, task_id=task_id, unique=unique)

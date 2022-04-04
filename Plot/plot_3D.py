@@ -107,24 +107,22 @@ def PCoA_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, **kwarg
     mds = MDS(n_components=n_comp, dissimilarity="precomputed", **kwargs)
     pos = mds.fit(dist).embedding_
     if n_comp == 3:
-        fig, ax = plot_data_3d(pd.DataFrame(pos), pd.Series(range(256)))
+        fig, ax = plot_data_3d(pd.DataFrame(pos), color=pd.Series(np.zeros(256)))
         ax.set_title(title)
         plt.savefig(f"{folder}/{title}.png")
     else:
         print("No visualization for dims other then three.")
     return pos
-    
-def UMAP_and_plot(dist, title="beta_diversity", folder="Plot", n_comp=3, **kwargs):
+def UMAP_and_plot(dist, title="umap", folder="Plot", n_comp=3, **kwargs):
     reducer = umap.UMAP(n_components=3)
     embedding = reducer.fit_transform(dist)
     if n_comp == 3:
-        fig, ax = plot_data_3d(pd.DataFrame(embedding), pd.Series(range(256)))
+        fig, ax = plot_data_3d(pd.DataFrame(embedding), color=pd.Series(np.zeros(256)))
         ax.set_title(title)
-        plt.savefig(f"static/umap.png")
+        plt.savefig(f"{folder}/{title}.png")
     else:
         print("No visualization for dims other then three.")
     return embedding
-
 
 if __name__ == "__main__":
     PCA_t_test()

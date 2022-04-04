@@ -23,6 +23,8 @@ class Diversity(object):
 
     def compute_beta(self, metric="unweighted_unifrac"):
         if "unifrac" not in metric:
+            print(self.otu_df.isnull().values.any())
+            self.otu_df.fillna(0)
             dist_mat = beta_diversity(metric, self.otu_df, self.sample_ids)
             dist_mat = pd.DataFrame(dist_mat.data)
         else:
@@ -84,4 +86,3 @@ if __name__ == "__main__":
     diversity = Diversity("OTU.csv")
     diversity.compute_alpha()
     diversity.plot_beta(metric="weighted_unifrac")
-

@@ -68,6 +68,7 @@ class SequenceModule(Module):
         super(SequenceModule, self).__init__()
         self._layer_num = params.NN_layers
         self.conv = Conv1d(2, params.timesteps, 1)
+        self.dropout = nn.Dropout(p=params.NN_dropout)
         if self._layer_num == 1:
             # HOW TO MAKE params.NN_layers a usable param?
             self.fc1 = Linear(params.NN_input_dim, params.NN_hidden_dim_1)
@@ -84,7 +85,9 @@ class SequenceModule(Module):
         if CONV_LAYER:
             x = self.conv(x)
         if self._layer_num == 1:
-            x = leaky_relu(self.fc1(x))
+            x = self.fc1(x)
+            x = leaky_relu(x)
+            x = self.dropout(x)
             x = self.fc2(x)
         elif self._layer_num == 2:
             x = leaky_relu(self.fc1(x))
@@ -380,34 +383,28 @@ class Activator:
             batch_size=batch_size,
             # collate_fn=train.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
         )
 
         self._train_valid_loader = DataLoader(
             train,
-            batch_size=batch_size,
+            batch_size=1000,
             # collate_fn=train.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
+
         )
 
         # set validation loader
         self._dev_loader = DataLoader(
             dev,
-            batch_size=batch_size,
+            batch_size=1000,
             # collate_fn=dev.collate_fn,
             shuffle=SHUFFLE,
-            pin_memory=True,
-            num_workers=8
         )
 
-    def _to_gpu(self, x, l, m):
+    def _to_gpu(self, x, l):
         x = x.cuda() if self._gpu else x
         l = l.cuda() if self._gpu else l
-        m = m.cuda() if self._gpu else m
-        return x, l, m
+        return x, l
 
     # train a model, input is the enum of the model type
     def train(self, show_plot=False, apply_nni=False, validate_rate=10):
@@ -417,26 +414,16 @@ class Activator:
         last_epoch = list(range(self._epochs))[-1]
         for epoch_num in range(self._epochs):
             # calc number of iteration in current epoch
-            for batch_index, (sequence, label, missing_values) in enumerate(self._train_loader):
-                sequence, label, missing_values = self._to_gpu(sequence, label, missing_values)
+            for batch_index, (sequence, label) in enumerate(self._train_loader):
+                sequence, label = self._to_gpu(sequence, label)
                 # print progress
                 self._model.train()
                 output = self._model(sequence.float())
-                """
-                print("label:")
-                print(label.shape)
-                print("seq:")
-                print(sequence.shape)
-                print("output:")
-                print(output.shape)
-                print(output.squeeze(dim=2).shape)
-                print(label.float().squeeze(dim=1).shape)
-                """
-                loss = self._loss_func(output.squeeze(dim=self._dim).float(), label.float(), missing_values)  # calculate loss
-                #print("\n" + str(loss))
+
+                loss = self._loss_func(output.squeeze(dim=self._dim).float(), label.float())  # calculate loss
                 loss.backward()                                 # back propagation
                 self._model.optimizer.step()                    # update weights
-                self._model.zero_grad()                         # zero gradients
+                self._model.optimizer.zero_grad()               # zero gradients
 
                 if PRINT_PROGRESS:
                     self._print_progress(batch_index, len_data, job=TRAIN_JOB)
@@ -460,7 +447,7 @@ class Activator:
                     torch.cuda.empty_cache()
                     self._print_info(jobs=[TRAIN_JOB, DEV_JOB])
 
-            if self._early_stop and epoch_num > 30 and self._print_dev_loss > np.max(self._loss_vec_dev[-30:]):
+            if self._early_stop and epoch_num > 30 and self._print_dev_loss > np.max(self._loss_vec_dev[-10:]):
                 break
 
         # report final results
@@ -483,23 +470,24 @@ class Activator:
 
         self._model.eval()
         # calc number of iteration in current epoch
-        len_data = len(data_loader)
-        for batch_index, (sequence, label, missing_values) in enumerate(data_loader):
-            sequence, label, missing_values = self._to_gpu(sequence, label, missing_values)
+        len_data = 0
+        for batch_index, (sequence, label) in enumerate(data_loader):
+            sequence, label = self._to_gpu(sequence, label)
             # print progress
             if PRINT_PROGRESS:
                 self._print_progress(batch_index, len_data, job=VALIDATE_JOB)
             output = self._model(sequence.float())
             # calculate total loss
-            loss_count += self._loss_func(output.squeeze(dim=self._dim).float(), label.float(), missing_values)  # calculate loss
-            if CALC_CORR:
-                corr_count += self._corr_func(output.squeeze(dim=self._dim).float(), label.float(), missing_values)  # calculate corr
-            if CALC_R2:
-                if len(label.shape) == 1:
-                    output = output.squeeze(dim=self._dim).float()
-                    r2_count += self._r2_func(output.float(), label.float(), missing_values)  # calculate r^2
-                elif len(label.shape) == 2:
-                    r2_count_list.append(self._r2_func(output.float(), label.float(), missing_values))  # calculate r^2
+            len_data+=1
+
+            # if CALC_CORR:
+            #     corr_count += self._corr_func(output.squeeze(dim=self._dim).float(), label.float())  # calculate corr
+            # if CALC_R2:
+            #     if len(label.shape) == 1:
+            #         output = output.squeeze(dim=self._dim).float()
+            #         r2_count += self._r2_func(output.float(), label.float())  # calculate r^2
+            #     elif len(label.shape) == 2:
+            #         r2_count_list.append(self._r2_func(output.float(), label.float()))  # calculate r^2
 
 
             true_labels += label.tolist()
@@ -512,11 +500,11 @@ class Activator:
                 self._test_label_and_output = (label, output)
 
         # update loss accuracy
-        loss = float(loss_count / len(data_loader))
+        loss = float(self._loss_func(torch.tensor(pred), torch.tensor(true_labels)))
         self._update_loss(loss, job=job)
 
         if CALC_CORR:
-            corr = float(corr_count / len(data_loader))
+            corr = self._corr_func(torch.unsqueeze(torch.tensor(pred),0).float(), torch.unsqueeze(torch.tensor(true_labels),0).float())
             self._update_corr(corr, job=job)
 
         if CALC_R2:
@@ -628,15 +616,15 @@ def run_nn_experiment(X, y, missing_values, params, folder, LOSS, person_indexes
     out_dim = 1 if len(y.shape) == 1 else y.shape[1]  # else NUMBER_OF_BACTERIA
     model_dim = 1
     CORR_FUNC = "single_bacteria_custom_corr_for_missing_values" if len(y.shape) == 1 else "multi_bacteria_custom_corr_for_missing_values"
-    EARLY_STOP = 0
-    BATCH_SIZE = NUMBER_OF_SAMPLES
+    EARLY_STOP = 1
+    BATCH_SIZE = 32
     structure = params["STRUCTURE"]
     layer_num = int(structure[0:3])
     hid_dim_1 = int(structure[4:7])
     hid_dim_2 = int(structure[8:11]) if len(structure) > 10 else None
     params_str = params.__str__().replace(" ", "").replace("'", "") + "_" + task_id
 
-    microbiome_dataset = MicrobiomeDataset(X, y, missing_values)
+    microbiome_dataset = MicrobiomeDataset(X, y)
     activator_params = NNActivatorParams(TRAIN_TEST_SPLIT=params["TRAIN_TEST_SPLIT"],
                                          LOSS=LOSS,
                                          CORR=CORR_FUNC,
@@ -714,24 +702,24 @@ def run_nn_experiment(X, y, missing_values, params, folder, LOSS, person_indexes
         title += " LR: " + str(params["LEARNING_RATE"]) + " OPT: " + str(params["OPTIMIZER"])
         if SAVE_RUN_RESULTS:
             activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=LOSS_PLOT)
-        dev_avg_loss = np.mean(activator.loss_dev_vec[-10:])
-        train_avg_loss = np.mean(activator.loss_train_vec[-10:])
+        dev_avg_loss = np.nanmean(activator.loss_dev_vec[-10:])
+        train_avg_loss = np.nanmean(activator.loss_train_vec[-10:])
 
         dev_avg_corr = None
         train_avg_corr = None
         if CALC_CORR:
             if SAVE_RUN_RESULTS:
                 activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=CORR_PLOT)
-            dev_avg_corr = np.mean(activator.corr_dev_vec[-10:])
-            train_avg_corr = np.mean(activator.corr_dev_vec[-10:])
+            dev_avg_corr = np.nanmean(activator.corr_dev_vec[-10:])
+            train_avg_corr = np.nanmean(activator.corr_train_vec[-10:])
 
         dev_avg_r2 = None
         train_avg_r2 = None
         if CALC_R2:
             if SAVE_RUN_RESULTS:
                 activator.plot_line(title, os.path.join(results_sub_folder, params_str + "_fig"), job=R2_PLOT)
-            dev_avg_r2 = np.mean(activator.r2_dev_vec[-10:])
-            train_avg_r2 = np.mean(activator.r2_train_vec[-10:])
+            dev_avg_r2 = np.nanmean(activator.r2_dev_vec[-10:])
+            train_avg_r2 = np.nanmean(activator.r2_train_vec[-10:])
 
 
         if SAVE_RUN_RESULTS:
