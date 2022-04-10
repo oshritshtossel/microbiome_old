@@ -117,10 +117,12 @@ def run_single_bacteria(folder_path, name):
 
 if __name__ == '__main__':
     datasets = {}
-    datasets['saliva'] = ['../../../PycharmProjects/data_microbiome_in_time/saliva/bacteria_time_series', 'saliva']
-    datasets['gdm'] = ['../../../PycharmProjects/data_microbiome_in_time/gdm/bacteria_time_series', 'gdm']
-    datasets['mucositis'] = ['../../../PycharmProjects/data_microbiome_in_time/mucositis/bacteria_time_series', 'mucositis']
-    datasets['allergy'] = ['../../../PycharmProjects/data_microbiome_in_time/allergy/bacteria_time_series', 'allergy']
-    datasets['vitamineA'] = ['../../../PycharmProjects/data_microbiome_in_time/vitamineA/bacteria_time_series', 'vitamineA']
+    # datasets['gdm'] = ['../../../PycharmProjects/data_microbiome_in_time/gdm/bacteria_time_series', 'gdm']
+    # datasets['mucositis'] = ['../../../PycharmProjects/data_microbiome_in_time/mucositis/bacteria_time_series', 'mucositis']
+    # datasets['allergy'] = ['../../../PycharmProjects/data_microbiome_in_time/allergy/bacteria_time_series', 'allergy']
+    # datasets['vitamineA'] = ['../../../PycharmProjects/data_microbiome_in_time/vitamineA/bacteria_time_series', 'vitamineA']
+    datasets['pnas'] = ['../../../PycharmProjects/data_microbiome_in_time/pnas/bacteria_time_series', 'pnas']
+    datasets['diab'] = ['../../../PycharmProjects/data_microbiome_in_time/diab/bacteria_time_series', 'diab']
+    datasets['GVHD'] = ['../../../PycharmProjects/data_microbiome_in_time/GVHD/bacteria_time_series', 'GVHD']
     for dataset in datasets:
         run_single_bacteria(datasets[dataset][0], datasets[dataset][1])

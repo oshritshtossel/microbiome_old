@@ -1,7 +1,6 @@
 import pickle
 import pandas as pd
 import numpy as np
-import regressors
 from LearningMethods.intervention_nn import run_NN
 
 def check_dataset(df, split_by=None):
@@ -56,7 +55,7 @@ def get_xs_ys(df, split_by=None, drop_ununique=True):
         df_ys = df_ys[good_cols]
     return df_xs, df_ys
 
-def regression(df, models=[], split_by=None, df_xs=None, df_ys=None, xsysflag=0):
+def regression(df, models=[], split_by=None, df_xs=None, df_ys=None, xsysflag=0, shuffle=False):
     # check_dataset(df, split_by=split_by) # return it!!!!!!!!!
     if not xsysflag:
         df_xs, df_ys = get_xs_ys(df, split_by)
@@ -72,6 +71,8 @@ def regression(df, models=[], split_by=None, df_xs=None, df_ys=None, xsysflag=0)
         for bacteria in df_ys.columns:
             print(i, ':', len(df_ys.columns))
             target = df_ys[bacteria]
+            if shuffle:
+                np.random.shuffle(target)
             uniqe = len(np.unique(list(target)))
             if uniqe >= 4:
                 spearman, mse, coef = regressors.learning_cross_val_loop(model, df_xs, target)
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     df_xs, df_ys = get_xs_ys(df, split_by='W')
     df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/GVHD/df_xs.csv')
     df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/GVHD/ys.csv')
-    datasets_result['GVHD'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
+    # datasets_result['GVHD'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
 
     df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/OTU_merged_General_task.csv')
     df.index = df['ID']
@@ -195,15 +196,15 @@ if __name__ == "__main__":
     df_xs, df_ys = get_xs_ys(df, split_by='_')
     df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/df_xs.csv')
     df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/ys.csv')
-    datasets_result['pnas'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
-    df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/diab/OTU_merged_General_task.csv')
+    # datasets_result['pnas'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
 
+    df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/diab/OTU_merged_General_task.csv')
     df.index = df['ID']
     df = df.iloc[:,1:]
     df_xs, df_ys = get_xs_ys(df, split_by='_')
     df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/diab/df_xs.csv')
     df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/diab/ys.csv')
-    datasets_result['diab'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
+    # datasets_result['diab'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
 
     with open('../../Microbiome_Intervention/new_microbiome_intervention/results/e.pickle', 'wb') as handle:
         pickle.dump(datasets_result, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -386,6 +386,7 @@ class Activator:
         # len_data = len(self._train_loader)
         last_epoch = list(range(self._epochs))[-1]
         for epoch_num in range(self._epochs):
+            print(epoch_num)
             # calc number of iteration in current epoch
             x_train, y_train = utils.shuffle(x_train, y_train, random_state=0)
             for (sequence, label) in zip(x_train, y_train):

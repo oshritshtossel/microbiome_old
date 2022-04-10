@@ -79,9 +79,9 @@ def multi_bakteria_time_series(otu_path, folder, time_points):
     final.to_csv(folder + 'time_series.csv', index=False)
 
 if __name__ == "__main__":
-    otu_path = '../../../PycharmProjects/data_microbiome_in_time/GVHD/OTU_merged_General_task.csv'
+    otu_path = '../../../PycharmProjects/data_microbiome_in_time/diab/OTU_merged_General_task.csv'
     df = pd.read_csv(otu_path)
     time_points = df['ID']
-    time_points = [int(i.split('W')[-1]) for i in time_points]
-    single_bakteria_time_series(otu_path=otu_path, folder='../../../PycharmProjects/data_microbiome_in_time/GVHD/bacteria_time_series/', time_points=time_points)
-    multi_bakteria_time_series(otu_path=otu_path, folder='../../../PycharmProjects/data_microbiome_in_time/GVHD/', time_points=time_points)
+    time_points = [int(i.split('_')[-1]) for i in time_points]
+    single_bakteria_time_series(otu_path=otu_path, folder='../../../PycharmProjects/data_microbiome_in_time/diab/bacteria_time_series/', time_points=time_points)
+    # multi_bakteria_time_series(otu_path=otu_path, folder='../../../PycharmProjects/data_microbiome_in_time/diab/', time_points=time_points)

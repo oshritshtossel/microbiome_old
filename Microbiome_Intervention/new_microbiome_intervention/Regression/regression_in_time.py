@@ -35,19 +35,32 @@ def get_xs_ys(df, split_by=None, drop_ununique=True):
     if not split_by:
         for item in ids:
             if item[:-1] == prev[:-1] and ord(item[-1]) == ord(prev[-1]) + 1:
-                df_xs = df_xs.append(df.loc[prev, :])
-                df_ys = df_ys.append(df.loc[item, :])
+                if type(df.loc[prev, :]) == pd.Series:
+                    df_xs = df_xs.append(df.loc[prev, :])
+                else:
+                    df_xs = df_xs.append(df.loc[prev, :].iloc[0, :])
+                if type(df.loc[item, :]) == pd.Series:
+                    df_ys = df_ys.append(df.loc[item, :])
+                else:
+                    df_ys = df_ys.append(df.loc[item, :].iloc[0, :])
             prev = item
     else:
         for item in ids:
             if item.split(split_by)[0] == prev.split(split_by)[0] and int(item.split(split_by)[-1]) == int(prev.split(split_by)[-1]) + 1:
-                df_xs = df_xs.append(df.loc[prev, :])
-                df_ys = df_ys.append(df.loc[item, :])
+                if type(df.loc[prev, :]) == pd.Series:
+                    df_xs = df_xs.append(df.loc[prev, :])
+                else:
+                    df_xs = df_xs.append(df.loc[prev, :].iloc[0,:])
+                if type(df.loc[item, :]) == pd.Series:
+                    df_ys = df_ys.append(df.loc[item, :])
+                else:
+                    df_ys = df_ys.append(df.loc[item, :].iloc[0, :])
+                prev = item
             prev = item
     df_xs = df_xs.iloc[1:, :]
     df_ys = df_ys.iloc[1:, :]
-    df_xs.index = np.arange(df_xs.shape[0])
-    df_ys.index = np.arange(df_ys.shape[0])
+    # df_xs.index = np.arange(df_xs.shape[0])
+    # df_ys.index = np.arange(df_ys.shape[0])
     good_cols = []
     if drop_ununique:
         for c in df_ys.columns:
@@ -181,28 +194,28 @@ def nn_runner(df, split_by=None):
 if __name__ == "__main__":
     datasets_result = {}
 
-    df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/GVHD/OTU_merged_General_task.csv')
+    df = pd.read_csv('../../../../PycharmProjects/data_microbiome_in_time/GVHD/OTU_merged_General_task.csv')
     df.index = df['ID']
     df = df.iloc[:,1:]
-    df_xs, df_ys = get_xs_ys(df, split_by='W')
-    df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/GVHD/df_xs.csv')
-    df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/GVHD/ys.csv')
+    # df_xs, df_ys = get_xs_ys(df, split_by='W')
+    # df_xs.to_csv('../../../../PycharmProjects/data_microbiome_in_time/GVHD/df_xs.csv')
+    # df_ys.to_csv('../../../../PycharmProjects/data_microbiome_in_time/GVHD/ys.csv')
     datasets_result['GVHD'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
 
-    df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/OTU_merged_General_task.csv')
+    df = pd.read_csv('../../../../PycharmProjects/data_microbiome_in_time/pnas/OTU_merged_General_task.csv')
     df.index = df['ID']
     df = df.iloc[:,1:]
-    df_xs, df_ys = get_xs_ys(df, split_by='_')
-    df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/df_xs.csv')
-    df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/pnas/ys.csv')
+    # df_xs, df_ys = get_xs_ys(df, split_by='_')
+    # df_xs.to_csv('../../../../PycharmProjects/data_microbiome_in_time/pnas/df_xs.csv')
+    # df_ys.to_csv('../../../../PycharmProjects/data_microbiome_in_time/pnas/ys.csv')
     datasets_result['pnas'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
-    df = pd.read_csv('../../../PycharmProjects/data_microbiome_in_time/diab/OTU_merged_General_task.csv')
 
+    df = pd.read_csv('../../../../PycharmProjects/data_microbiome_in_time/diab/OTU_merged_General_task.csv')
     df.index = df['ID']
     df = df.iloc[:,1:]
-    df_xs, df_ys = get_xs_ys(df, split_by='_')
-    df_xs.to_csv('../../../PycharmProjects/data_microbiome_in_time/diab/df_xs.csv')
-    df_ys.to_csv('../../../PycharmProjects/data_microbiome_in_time/diab/ys.csv')
+    # df_xs, df_ys = get_xs_ys(df, split_by='_')
+    # df_xs.to_csv('../../../../PycharmProjects/data_microbiome_in_time/diab/df_xs.csv')
+    # df_ys.to_csv('../../../../PycharmProjects/data_microbiome_in_time/diab/ys.csv')
     datasets_result['diab'] = regression(df, ['Linear_regression', 'Lasso', 'Ridge', 'ARD', 'SVR', 'SVR poly', 'SVR poly', 'SVR rbf','SVR sigmoid'], df_xs=df_xs, df_ys=df_ys, xsysflag=1)
 
     with open('../../Microbiome_Intervention/new_microbiome_intervention/results/e.pickle', 'wb') as handle:

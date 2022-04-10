@@ -212,26 +212,26 @@ def get_data(arr, treshold_min=-1, treshold_max=1):
 
 
 def main(path,name):
-    df = pd.read_csv(path)
-    df.index = df.iloc[:,0]
-    to_append = []
-    for id in df.index:
-        if id not in df.columns:
-            to_append.append(id)
-    for c in to_append:
-        df[c] = np.zeros(len(df.index))
-    df = df.iloc[:,1:]
-    values = np.sort(df.to_numpy().flatten())
-    arr = df.to_numpy()
-    for i in range(arr.shape[0]):
-        arr[i,i] = 0
-    node_list, edge_list, color_list = get_data(arr, treshold_min=min(values[int(0.004*len(values))],0), treshold_max=max(values[int(0.996*len(values))],0))
-
-    bacteria = list(df.columns)
-    # set the size of the nodes, can control it  if wanted
-    v = [100] * len(bacteria)
-
-    t_name, g_name = plot_bacteria_intraction_network(bacteria, node_list, v, edge_list, color_list, "example_graph", "bacteria_interaction_network")
+    # df = pd.read_csv(path)
+    # df.index = df.iloc[:,0]
+    # to_append = []
+    # for id in df.index:
+    #     if id not in df.columns:
+    #         to_append.append(id)
+    # for c in to_append:
+    #     df[c] = np.zeros(len(df.index))
+    # df = df.iloc[:,1:]
+    # values = np.sort(df.to_numpy().flatten())
+    # arr = df.to_numpy()
+    # for i in range(arr.shape[0]):
+    #     arr[i,i] = 0
+    # node_list, edge_list, color_list = get_data(arr, treshold_min=min(values[int(0.004*len(values))],0), treshold_max=max(values[int(0.996*len(values))],0))
+    #
+    # bacteria = list(df.columns)
+    # # set the size of the nodes, can control it  if wanted
+    # v = [100] * len(bacteria)
+    #
+    # t_name, g_name = plot_bacteria_intraction_network(bacteria, node_list, v, edge_list, color_list, "example_graph", "bacteria_interaction_network")
     #############################################################
     g_name = 'bacteria_interaction_network/example_graph.html'
     t_name = 'interaction.png'
@@ -249,4 +249,4 @@ def main(path,name):
 
 if __name__ == '__main__':
     ## squared matriix of the coeefients
-    main('../../PycharmProjects/saliva/coeff_lasso.csv', name='saliva_all')
+    main('../../PycharmProjects/saliva/coeff_russia_gdm_lasso.csv', name='saliva_gdm_russia')

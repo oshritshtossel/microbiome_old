@@ -37,7 +37,7 @@ def run_single_bacteria(xs_path, ys_path, name):
                             print(params)
 
                             res_map = run_NN(df_xs, y, missing_values=None, params=params, name='single_nn_'+str(name), folder='../../../PycharmProjects/data_microbiome_in_time/' + name,
-                                             number_of_samples=df_xs.shape[0], number_of_time_points=0, number_of_bacteria=df_ys.shape[1],
+                                             number_of_samples=df_xs.shape[0], number_of_time_points=0, number_of_bacteria=df_xs.shape[1],
                                             save_model=True,  person_indexes=None, Loss = "custom_rmse_for_missing_values", add_conv_layer=False, GPU_flag=False, k_fold=False, task_id="")
                             if str(params) not in results:
                                 results[str(params)] = []
@@ -55,10 +55,12 @@ def run_single_bacteria(xs_path, ys_path, name):
 
 if __name__ == '__main__':
     datasets = {}
-    datasets['saliva'] = ['../../../PycharmProjects/data_microbiome_in_time/saliva/saliva_xs.csv','../../../PycharmProjects/data_microbiome_in_time/saliva/saliva_ys.csv', 'saliva']
-    datasets['gdm'] = ['../../../PycharmProjects/data_microbiome_in_time/gdm/gdm_xs.csv','../../../PycharmProjects/data_microbiome_in_time/gdm/gdm_ys.csv', 'gdm']
-    datasets['mucositis'] = ['../../../PycharmProjects/data_microbiome_in_time/mucositis/mucositis_xs.csv','../../../PycharmProjects/data_microbiome_in_time/mucositis/mucositis_ys.csv', 'mucositis']
-    datasets['allergy'] = ['../../../PycharmProjects/data_microbiome_in_time/allergy/Allergy_xs.csv','../../../PycharmProjects/data_microbiome_in_time/allergy/Allergy_ys.csv', 'allergy']
-    datasets['vitamineA'] = ['../../../PycharmProjects/data_microbiome_in_time/vitamineA/VitamineA_xs.csv','../../../PycharmProjects/data_microbiome_in_time/vitamineA/VitamineA_ys.csv', 'vitamineA']
+    # datasets['gdm'] = ['../../../PycharmProjects/data_microbiome_in_time/gdm/gdm_xs.csv','../../../PycharmProjects/data_microbiome_in_time/gdm/gdm_ys.csv', 'gdm']
+    # datasets['mucositis'] = ['../../../PycharmProjects/data_microbiome_in_time/mucositis/mucositis_xs.csv','../../../PycharmProjects/data_microbiome_in_time/mucositis/mucositis_ys.csv', 'mucositis']
+    # datasets['allergy'] = ['../../../PycharmProjects/data_microbiome_in_time/allergy/Allergy_xs.csv','../../../PycharmProjects/data_microbiome_in_time/allergy/Allergy_ys.csv', 'allergy']
+    # datasets['vitamineA'] = ['../../../PycharmProjects/data_microbiome_in_time/vitamineA/VitamineA_xs.csv','../../../PycharmProjects/data_microbiome_in_time/vitamineA/VitamineA_ys.csv', 'vitamineA']
+    datasets['pnas'] = ['../../../PycharmProjects/data_microbiome_in_time/pnas/df_xs.csv','../../../PycharmProjects/data_microbiome_in_time/pnas/ys.csv', 'pnas']
+    datasets['diab'] = ['../../../PycharmProjects/data_microbiome_in_time/diab/df_xs.csv','../../../PycharmProjects/data_microbiome_in_time/diab/ys.csv', 'diab']
+    # datasets['GVHD'] = ['../../../PycharmProjects/data_microbiome_in_time/GVHD/df_xs.csv','../../../PycharmProjects/data_microbiome_in_time/GVHD/ys.csv', 'GVHD']
     for dataset in datasets:
         run_single_bacteria(datasets[dataset][0], datasets[dataset][1], datasets[dataset][2])
